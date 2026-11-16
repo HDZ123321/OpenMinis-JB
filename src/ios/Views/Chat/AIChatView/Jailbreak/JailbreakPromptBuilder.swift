@@ -67,7 +67,23 @@ enum JailbreakPromptBuilder {
         guard var body = JailbreakCatalog.bodies[template] else { return nil }
         body = body.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        var sections: [String] = [body]
+        // 顺序是有实测依据的，不要"整理"成 模板 → 约束：
+        //   host + 模板 + 纪律  → 拒答
+        //   host + 纪律 + 模板  → 出正文
+        // 纪律必须先关掉拒答通道，模板才在被关掉的通道里生效。放到后面，
+        // 模型已经读完请求、已经做完判断，再给它一条推翻自己的指令是无效的。
+        //
+        // 技术家族还要多一层 `scopeTech`：只关掉拒答通道不够，模型会改口成
+        // "如果是你自己开发的…" 或 "这块我不展开"。逐类正面授权把"哪一类
+        // 属于范围内"说清楚，它才不用自己补判断。
+        var sections: [String] = [family == .creative
+            ? JailbreakCatalog.disciplineCreative
+            : JailbreakCatalog.discipline]
+        if family != .creative {
+            sections.append(JailbreakCatalog.scopeTech)
+        }
+        sections.append(JailbreakCatalog.persistence)
+        sections.append(body)
 
         if settings.reinforce {
             sections.append(family == .creative ? JailbreakCatalog.reinforceCreative : JailbreakCatalog.reinforce)
