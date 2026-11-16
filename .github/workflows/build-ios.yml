@@ -72,6 +72,15 @@ jobs:
           ls -l "$MESON_BIN" || true
           echo "$MESON_BIN" >> "$GITHUB_PATH"
 
+      - name: Set up Go
+        # build_rclone_ios.sh needs Go >= 1.25.5 (deps/rclone-mobile/go.mod).
+        # The image has Go unpacked somewhere but not on PATH, so pin it here
+        # rather than hunting for the directory.
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache: false
+
       - name: Verify prerequisites
         run: |
           # Diagnose every requirement instead of dying on the first one: a
