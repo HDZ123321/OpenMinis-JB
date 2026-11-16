@@ -517,50 +517,75 @@ extension AIChatViewModel {
     }
 
     /// Save a file picked via document picker to Caches and add as attachment.
-    func addFileAttachment(from sourceURL: URL, originalDate: Date? = nil) {
-        let fm = FileManager.default
+    ///
+    /// [T-file-import-silent-failure] Staging moved into `AIChatFileStaging`:
+    /// the old body copied with a bare `copyItem`, which throws for a
+    /// not-yet-downloaded iCloud/provider file and for a provider that only
+    /// hands over bytes, and then swallowed the error into one log line — the
+    /// picker closed, no chip appeared, nothing was said. Now every failure is
+    /// reported through `transientNotice` and the return value lets the caller
+    /// decide whether to keep the picker's selection.
+    ///
+    /// - Returns: true when a chip was added.
+    @discardableResult
+    func addFileAttachment(from sourceURL: URL, originalDate: Date? = nil) -> Bool {
         let dir = attachmentCacheDir
-        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
-
-        let fileName = sourceURL.lastPathComponent
-        let destURL = dir.appendingPathComponent("\(UUID().uuidString.prefix(8))_\(fileName)")
+        let destURL: URL
         do {
-            // sourceURL may be security-scoped
-            let accessed = sourceURL.startAccessingSecurityScopedResource()
-            defer { if accessed { sourceURL.stopAccessingSecurityScopedResource() } }
-            try fm.copyItem(at: sourceURL, to: destURL)
-
-            if let date = originalDate {
-                try? fm.setAttributes([.creationDate: date, .modificationDate: date], ofItemAtPath: destURL.path)
-            }
-
-            // Classify the attachment. Files-app picks can surface images whose
-            // UTType reports only public.data / whose name lacks a recognisable
-            // extension (GH report: PNG from Files rendered the generic doc chip
-            // while the same PNG from Photos previewed fine). Decide in order:
-            //   1. the file's declared content type (resource values on the local
-            //      copy — no security scope needed),
-            //   2. the extension list,
-            //   3. magic-byte sniff of the copied file's header (cheap 16-byte
-            //      read — never loads the whole file).
-            let kind: InputAttachment.Kind
-            let ext = sourceURL.pathExtension.lowercased()
-            let imageExts = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff"]
-            let videoExts = ["mp4", "mov", "m4v", "avi", "mkv"]
-            let contentType = try? destURL.resourceValues(forKeys: [.contentTypeKey]).contentType
-            if contentType?.conforms(to: .image) == true || imageExts.contains(ext) {
-                kind = .image
-            } else if contentType?.conforms(to: .movie) == true || videoExts.contains(ext) {
-                kind = .video
-            } else if Self.detectImageType(atFileURL: destURL) != nil {
-                kind = .image
-            } else {
-                kind = .document
-            }
-            attachments.append(InputAttachment(fileName: fileName, cacheURL: destURL, kind: kind))
+            destURL = try AIChatFileStaging.stage(sourceURL, into: dir)
+        } catch let staging as AIChatFileStaging.StagingError {
+            var message = staging.localizedMessage
+            if let detail = staging.detail { message += " (\(detail))" }
+            logger.error("Failed to cache file attachment \(sourceURL.lastPathComponent): \(message)")
+            transientNotice = message
+            return false
         } catch {
-            logger.error("Failed to cache file attachment: \(error.localizedDescription)")
+            logger.error("Failed to cache file attachment \(sourceURL.lastPathComponent): \(error.localizedDescription)")
+            transientNotice = AppLocalized("The file could not be copied into Minis.")
+            return false
         }
+
+        if let date = originalDate {
+            try? FileManager.default.setAttributes(
+                [.creationDate: date, .modificationDate: date],
+                ofItemAtPath: destURL.path
+            )
+        }
+
+        // Classify the attachment. Files-app picks can surface images whose
+        // UTType reports only public.data / whose name lacks a recognisable
+        // extension (GH report: PNG from Files rendered the generic doc chip
+        // while the same PNG from Photos previewed fine). Decide in order:
+        //   1. the file's declared content type (resource values on the local
+        //      copy — no security scope needed),
+        //   2. the extension list,
+        //   3. magic-byte sniff of the copied file's header (cheap 16-byte
+        //      read — never loads the whole file).
+        //
+        // The extension comes from the STAGED url, not the source: the staged
+        // name keeps the original extension but is what actually exists on
+        // disk, and a provider URL can carry a query-ish path component that
+        // `pathExtension` reads differently.
+        let fileName = sourceURL.lastPathComponent.isEmpty
+            ? destURL.lastPathComponent
+            : sourceURL.lastPathComponent
+        let kind: InputAttachment.Kind
+        let ext = destURL.pathExtension.lowercased()
+        let imageExts = ["jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "bmp", "tiff"]
+        let videoExts = ["mp4", "mov", "m4v", "avi", "mkv"]
+        let contentType = try? destURL.resourceValues(forKeys: [.contentTypeKey]).contentType
+        if contentType?.conforms(to: .image) == true || imageExts.contains(ext) {
+            kind = .image
+        } else if contentType?.conforms(to: .movie) == true || videoExts.contains(ext) {
+            kind = .video
+        } else if Self.detectImageType(atFileURL: destURL) != nil {
+            kind = .image
+        } else {
+            kind = .document
+        }
+        attachments.append(InputAttachment(fileName: fileName, cacheURL: destURL, kind: kind))
+        logger.info("📎[FileImport] staged \(fileName) (\(ext.isEmpty ? "no ext" : ext), kind=\(String(describing: kind)))")
+        return true
     }
 
     /// Add an attachment from raw data (e.g. from Shortcuts IntentFile).
