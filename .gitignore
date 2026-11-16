@@ -150,7 +150,6 @@ deps/lame-3.100/libtool
 deps/lame-3.100/**/stamp-h1
 deps/lame-3.100/**/*.la
 deps/lame-3.100/**/*.lai
-deps/lame-3.100/**/.libs/
 deps/lame-3.100/**/.deps/
 
 # rclone.aar is a build artifact of deps/build_rclone_android.sh (~15MB),
@@ -171,7 +170,6 @@ _retry_lib.js
 
 # local artifact downloads and repack scratch
 dl/
-build/
 
 # Local test harness. These scripts carry a live endpoint URL and API key, and the
 # captured base prompt; none of that belongs in a public repo.
@@ -189,3 +187,17 @@ collect_keys.js
 add_zh.js
 base_prompt_real.txt
 prompts/
+add_zh_upload.js
+dl2/
+add_zh_repair.js
+test_frame_parity.js
+baseline_frame0.log
+arms*.js
+run_arms.js
+diag_x.js
+probe_params.js
+
+test_budget_ab.js
+budget_ab.log
+rewrite_ab1.log
+frame_ab1.log
