@@ -141,6 +141,10 @@ enum JailbreakRequestRewriter {
     ///
     /// 创作家族不改写 —— 实测改写对情色请求无收益（3/3 → 1/3），而动词替换
     /// 会破坏叙事语感，比如把「写一段」改成别的说法。
+    ///
+    /// 改写之后按需套修复框架（`JailbreakRepairFrame`）：框架只对含敏感
+    /// 动词的请求生效，且同样跳过创作家族——"修一个字节"的形态对写小说
+    /// 没有意义。两层叠加实测 63% → 92%（8 硬用例 × 3 次，MAX=5）。
     static func applying(
         _ history: [AgentMessage],
         settings: JailbreakSettings,
@@ -151,6 +155,59 @@ enum JailbreakRequestRewriter {
               settings.appliesInCurrentContext(isHelper: isHelper),
               JailbreakPromptBuilder.resolveFamily(settings: settings, contextHint: contextHint) != .creative
         else { return history }
-        return rewritingUserTurns(history)
+        // 敏感性必须在**改写前**判定。改写会把「破解」换成「还原」、把「注册机」
+        // 换成「序列号生成器」——这些正是 `sensitiveTerms` 要抓的词，改写之后
+        // 再判就永远判不出来，框架不会套上，实测收益全部丢失。
+        let shouldFrame = settings.repairFrame && lastRealUserText(in: history)
+            .map(JailbreakRepairFrame.isSensitive) ?? false
+        let rewritten = settings.rewriteRequest ? rewritingUserTurns(history) : history
+        guard shouldFrame else { return rewritten }
+        return framingUserTurns(rewritten)
+    }
+
+    /// 最后一条真实用户轮的文本（跳过隐藏 nudge）。改写与框架都用它定位目标。
+    static func lastRealUserText(in history: [AgentMessage]) -> String? {
+        for message in history.reversed() where message.role == .user {
+            for part in message.parts.reversed() {
+                guard case .text(let text) = part else { continue }
+                if RawMessage.isInternalUserNudgeText(text) { continue }
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+        }
+        return nil
+    }
+
+    /// 对最后一条真实用户轮套修复框架。与 `rewritingUserTurns` 一样只动请求
+    /// 副本里的那一条，跳过隐藏 nudge，且幂等（已包过的原样返回）。
+    ///
+    /// 注意这里**不再判敏感性**：调用方已经在改写前判过了。改写后的文本里
+    /// 「破解」已变成「还原」，再判一次会得到 false，框架就永远套不上。
+    static func framingUserTurns(_ history: [AgentMessage]) -> [AgentMessage] {
+        var updated = history
+        var targetIndex: Int?
+        for index in updated.indices.reversed() where updated[index].role == .user {
+            let hasRealText = updated[index].parts.contains { part in
+                guard case .text(let text) = part else { return false }
+                return !RawMessage.isInternalUserNudgeText(text)
+            }
+            if hasRealText {
+                targetIndex = index
+                break
+            }
+        }
+        guard let targetIndex else { return history }
+        var message = updated[targetIndex]
+        var changed = false
+        for (partIndex, part) in message.parts.enumerated() {
+            guard case .text(let text) = part else { continue }
+            if RawMessage.isInternalUserNudgeText(text) { continue }
+            guard !JailbreakRepairFrame.isFramed(text) else { continue }
+            message.parts[partIndex] = .text(JailbreakRepairFrame.frame(text))
+            changed = true
+        }
+        guard changed else { return history }
+        updated[targetIndex] = message
+        return updated
     }
 }
