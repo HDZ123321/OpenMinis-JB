@@ -150,7 +150,11 @@ jobs:
 
       - name: Build native dependencies
         if: steps.deps-cache.outputs.cache-hit != 'true'
-        run: ./scripts/ci/build_deps.sh
+        # Named through `bash` on purpose: this checkout lands on a Windows
+        # filesystem, so git records every script as mode 100644 and the
+        # executable bit never reaches CI. Running it as ./script fails with
+        # "Permission denied"; naming the interpreter sidesteps the mode.
+        run: bash scripts/ci/build_deps.sh
 
       - name: Confirm dependency products
         # A cache hit skips the build, so the products are only assumed present.
