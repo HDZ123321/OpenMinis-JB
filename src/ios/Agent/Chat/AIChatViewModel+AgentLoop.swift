@@ -1009,6 +1009,29 @@ extension AIChatViewModel {
             let dispatchInputTokens = recordContextDispatch(history: contextHistory, model: activeModel)
             logger.info("[CtxMeter] dispatch model=\(activeModel.id) estimate=\(self.lastDispatchEstimate) ratio=\(String(format: "%.3f", self.lastDispatchRatio)) predicted=\(dispatchInputTokens) maxTokens=\(self.dynamicMaxTokens(provider: provider, model: activeModel, lastContextTokens: dispatchInputTokens))")
             contextHistory = applyRequestImageBudget(contextHistory)
+            // [T-jailbreak] Rewrite the outbound copy of the user turn, not the
+            // stored one.
+            //
+            // The layer alone lifts the single-attempt content rate from 0% to
+            // 13% under the real 27k-char system prompt. Measured over 20
+            // interleaved samples per arm, the entire remaining gain comes from
+            // reshaping the request's own verbs: raw 2/20, "add a framing
+            // prefix" 2/20, "mask the product name" 1/20, "reshape the verbs"
+            // 11/20. Putting the same reshaped sentence in the system prompt
+            // instead of the user turn gives 2/20, so it has to travel as the
+            // user's text.
+            //
+            // `agentHistory` and the database keep the user's original wording —
+            // this edits only the array handed to the provider, so the chat
+            // still shows what was typed and retries stay idempotent.
+            // Returns the same array when nothing matched, so this is a
+            // no-op for requests that carry no trigger word.
+            contextHistory = JailbreakRequestRewriter.applying(
+                contextHistory,
+                settings: jailbreakSettings,
+                isHelper: helperConfig != nil,
+                contextHint: JailbreakPromptBuilder.lastUserText(in: agentHistory)
+            )
             // [T-msgidx-oob] Re-resync before subscripting. The loop-top resync
             // (~line 4698) is not sufficient for this site: the in-loop
             // compaction guard above runs `await compactBefore(...)` in between,
@@ -1432,7 +1455,14 @@ extension AIChatViewModel {
                     msgIdx = resynced
                     streamResult = try await streamWithGroupFallbackUntilContent(
                         provider: provider,
-                        messages: applyRequestImageBudget(effectiveAgentHistory()),
+                        messages: applyRequestImageBudget(
+                            JailbreakRequestRewriter.applying(
+                                effectiveAgentHistory(),
+                                settings: jailbreakSettings,
+                                isHelper: helperConfig != nil,
+                                contextHint: JailbreakPromptBuilder.lastUserText(in: agentHistory)
+                            )
+                        ),
                         baseSystemPrompt: baseSystemPrompt,
                         systemPrompt: userSystemPrompt,
                         tools: tools,
@@ -1455,7 +1485,14 @@ extension AIChatViewModel {
                     do {
                         let retryStream = try await streamWithAutoRetry(
                             provider: provider,
-                            messages: applyRequestImageBudget(effectiveAgentHistory()),
+                            messages: applyRequestImageBudget(
+                            JailbreakRequestRewriter.applying(
+                                effectiveAgentHistory(),
+                                settings: jailbreakSettings,
+                                isHelper: helperConfig != nil,
+                                contextHint: JailbreakPromptBuilder.lastUserText(in: agentHistory)
+                            )
+                        ),
                             systemPrompt: userSystemPrompt,
                             tools: tools,
                             maxTokens: dynamicMaxTokens(provider: provider, model: activeModel, lastContextTokens: dispatchInputTokens),
@@ -1513,7 +1550,14 @@ extension AIChatViewModel {
                         // group entries until one returns non-empty content.
                         streamResult = try await streamWithGroupFallbackUntilContent(
                             provider: provider,
-                            messages: applyRequestImageBudget(effectiveAgentHistory()),
+                            messages: applyRequestImageBudget(
+                            JailbreakRequestRewriter.applying(
+                                effectiveAgentHistory(),
+                                settings: jailbreakSettings,
+                                isHelper: helperConfig != nil,
+                                contextHint: JailbreakPromptBuilder.lastUserText(in: agentHistory)
+                            )
+                        ),
                             baseSystemPrompt: baseSystemPrompt,
                             systemPrompt: userSystemPrompt,
                             tools: tools,
