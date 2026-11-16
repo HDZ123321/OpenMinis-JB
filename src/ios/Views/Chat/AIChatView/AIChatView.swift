@@ -1314,18 +1314,28 @@ struct AIChatView: View {
                 }
             }
         }
-        .fileImporter(
-            isPresented: $showDocumentPicker,
-            allowedContentTypes: [.image, .pdf, .plainText, .json, .sourceCode, .presentation, .spreadsheet, .data],
-            allowsMultipleSelection: true
-        ) { result in
-            switch result {
-            case .success(let urls):
-                for url in urls {
-                    vm.addFileAttachment(from: url)
-                }
-            case .failure(let error):
-                minisLogger.error("File import failed: \(error.localizedDescription)")
+        // [T-file-import-silent-failure] Was `.fileImporter`. Its completion
+        // closure is dropped when this body's ~80-modifier chain rebuilds while
+        // the picker is up — which happens on every @Published tick — and it
+        // has no cancellation callback, so a lost callback and "picked
+        // nothing" both ended in silence. The UIKit picker gives us a real
+        // delegate, an explicit cancel path, and `asCopy: true` so a cloud
+        // provider's file arrives already downloaded into our own temp dir.
+        .sheet(isPresented: $showDocumentPicker) {
+            AIChatDocumentPicker(
+                contentTypes: [.image, .pdf, .plainText, .json, .sourceCode, .presentation, .spreadsheet, .data],
+                allowsMultipleSelection: true
+            ) { urls in
+                // Close the sheet from our side rather than relying on the
+                // picker's own `dismiss` propagating through the hosting
+                // controller: if it ever fails to propagate, the user is left
+                // staring at an empty sheet and the whole pick reads as a
+                // no-op — the exact symptom being fixed here.
+                showDocumentPicker = false
+                handlePickedDocuments(urls)
+            } onCancel: {
+                showDocumentPicker = false
+                minisLogger.info("[FileImport] cancelled with no selection")
             }
         }
         // [T-minisurl-wrong-active-session] A draft opened from the UI has
