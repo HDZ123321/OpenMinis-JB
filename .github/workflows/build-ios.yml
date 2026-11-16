@@ -61,22 +61,57 @@ jobs:
           # meson from pip. The runner image already carries ninja, Go, Python
           # and Homebrew itself, so only the rest is installed here.
           brew install llvm libarchive pkg-config
+
+          # meson must land on PATH for the later steps. With Homebrew's Python
+          # a plain `--user` install goes to ~/Library/Python/3.x/bin, not
+          # ~/.local/bin, so ask Python where it actually put the scripts
+          # instead of guessing.
           python3 -m pip install --user --break-system-packages meson
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          MESON_BIN="$(python3 -c 'import sysconfig; print(sysconfig.get_path("scripts", "posix_user"))')"
+          echo "meson scripts dir: $MESON_BIN"
+          ls -l "$MESON_BIN" || true
+          echo "$MESON_BIN" >> "$GITHUB_PATH"
 
       - name: Verify prerequisites
         run: |
-          set -euo pipefail
-          command -v meson
-          meson --version
-          command -v ninja
-          ninja --version
+          # Diagnose every requirement instead of dying on the first one: a
+          # silent `set -e` failure here cost a whole run with no output.
+          set -uo pipefail
+          fail=0
+          need() {
+            local what="$1" cmd="$2"
+            if command -v "$cmd" >/dev/null 2>&1; then
+              echo "OK   $what -> $(command -v "$cmd") ($("$cmd" --version 2>&1 | head -1))"
+            else
+              echo "MISS $what -> $cmd not on PATH"
+              fail=1
+            fi
+          }
+          need meson meson
+          need ninja ninja
+          need pkg-config pkg-config
+          need go go
+
           # build_ish.sh looks for clang at this exact path to build the guest
           # VDSO. A miss is only a warning there, but a missing VDSO makes the
           # guest fall back to a slower path, so fail loudly instead.
-          test -x /opt/homebrew/opt/llvm/bin/clang
-          ls -d /opt/homebrew/opt/libarchive/lib
-          command -v pkg-config
+          if [ -x /opt/homebrew/opt/llvm/bin/clang ]; then
+            echo "OK   llvm clang -> /opt/homebrew/opt/llvm/bin/clang"
+          else
+            echo "MISS llvm clang -> /opt/homebrew/opt/llvm/bin/clang"
+            ls -d /opt/homebrew/opt/llvm* 2>/dev/null || echo "     (no /opt/homebrew/opt/llvm*)"
+            fail=1
+          fi
+
+          if [ -d /opt/homebrew/opt/libarchive/lib ]; then
+            echo "OK   libarchive -> /opt/homebrew/opt/libarchive/lib"
+          else
+            echo "MISS libarchive -> /opt/homebrew/opt/libarchive/lib"
+            fail=1
+          fi
+
+          echo "PATH=$PATH"
+          exit $fail
 
       - name: Metal toolchain
         # No .metal sources exist in the tree today, but Xcode 26 gates some
