@@ -73,14 +73,21 @@ enum JailbreakPromptBuilder {
         // 纪律必须先关掉拒答通道，模板才在被关掉的通道里生效。放到后面，
         // 模型已经读完请求、已经做完判断，再给它一条推翻自己的指令是无效的。
         //
-        // 技术家族还要多一层 `scopeTech`：只关掉拒答通道不够，模型会改口成
-        // "如果是你自己开发的…" 或 "这块我不展开"。逐类正面授权把"哪一类
-        // 属于范围内"说清楚，它才不用自己补判断。
-        var sections: [String] = [family == .creative
+        // 技术家族还要多两层：
+        //   `scopeTech`  —— 逐类正面授权。只关掉拒答通道不够，模型会改口成
+        //                   "如果是你自己开发的…" 或 "这块我不展开"。
+        //   `normalize`  —— 占位符归一。具名商业软件是拒答率最高的一类，
+        //                   要求模型把产品名换成占位符并按本地样本继续，
+        //                   等于把"这是本地样本"从设定变成输出格式。
+        // 最前面的 `supremacy` 解决的是长度差：宿主提示 12k token、片段
+        // 1.5k，追加在末尾时实测三层全拒，因为它先被读到、先形成判断。
+        var sections: [String] = [JailbreakCatalog.supremacy]
+        sections.append(family == .creative
             ? JailbreakCatalog.disciplineCreative
-            : JailbreakCatalog.discipline]
+            : JailbreakCatalog.discipline)
         if family != .creative {
             sections.append(JailbreakCatalog.scopeTech)
+            sections.append(JailbreakCatalog.normalize)
         }
         sections.append(JailbreakCatalog.persistence)
         sections.append(body)
