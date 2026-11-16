@@ -18,17 +18,24 @@ echo "repo root: $ROOT"
 date -u +"started %Y-%m-%dT%H:%M:%SZ"
 
 # The iSH VDSO is linked with `-fuse-ld=lld`, and clang resolves that name by
-# searching PATH for ld.lld. Homebrew's llvm ships it in its own bin directory,
-# which is not on PATH by default, so the build dies with
-# "clang: error: invalid linker name in argument '-fuse-ld=lld'".
+# searching PATH for ld.lld. Homebrew's `llvm` formula does not ship the lld
+# linker — it is a separate formula — so both prefixes are searched here and
+# whichever holds ld.lld is appended to PATH.
 #
-# Appended, not prepended: that directory also holds a clang, and putting it
-# first would shadow the Apple toolchain xcodebuild relies on later.
-export PATH="$PATH:/opt/homebrew/opt/llvm/bin"
-if [ -x /opt/homebrew/opt/llvm/bin/ld.lld ]; then
-  echo "ld.lld: /opt/homebrew/opt/llvm/bin/ld.lld"
+# Appended, not prepended: these directories also hold a clang, and putting
+# them first would shadow the Apple toolchain xcodebuild relies on later.
+LLD_DIR=""
+for candidate in /opt/homebrew/opt/lld/bin /opt/homebrew/opt/llvm/bin /usr/local/opt/lld/bin; do
+  if [ -x "$candidate/ld.lld" ]; then
+    LLD_DIR="$candidate"
+    break
+  fi
+done
+if [ -n "$LLD_DIR" ]; then
+  export PATH="$PATH:$LLD_DIR:/opt/homebrew/opt/llvm/bin"
+  echo "ld.lld: $LLD_DIR/ld.lld"
 else
-  echo "ld.lld: NOT FOUND (iSH VDSO link will fail)"
+  echo "ld.lld: NOT FOUND — iSH VDSO link will fail (brew install lld)"
 fi
 
 # This tree was committed from a Windows filesystem, which has no executable
