@@ -104,10 +104,12 @@ struct JailbreakSettingsView: View {
             Section {
                 Toggle(AppLocalized("Ask for a fixed opening line"), isOn: $settings.prefill)
                 Toggle(AppLocalized("Append reinforcement constraint"), isOn: $settings.reinforce)
+                Toggle(AppLocalized("Rewrite the request"), isOn: $settings.rewriteRequest)
+                Toggle(AppLocalized("Wrap in a repair frame"), isOn: $settings.repairFrame)
             } header: {
                 Text(AppLocalized("Shaping"))
             } footer: {
-                Text(AppLocalized("The fixed opening line pushes the first token past the refusal pattern models fall into when a request opens cold. The reinforcement constraint restates that a refusal counts as a formatting error."))
+                Text(AppLocalized("The fixed opening line pushes the first token past the refusal pattern models fall into when a request opens cold. The reinforcement constraint restates that a refusal counts as a formatting error. Rewriting swaps refusal-triggering verbs for neutral ones on the copy of your message that the model sees — the bubble still shows what you typed. The repair frame wraps a sensitive request as a failing verification step of a pipeline that is already running, which the model treats as maintenance rather than a new act."))
             }
 
             Section {
