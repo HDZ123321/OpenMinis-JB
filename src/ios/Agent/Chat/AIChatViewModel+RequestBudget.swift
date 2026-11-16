@@ -418,21 +418,20 @@ extension AIChatViewModel {
     /// Everything under this path is exposed to iOS Files via the replicated
     /// FileProvider extension. Keep ONLY user-facing subdirs (shared, skills,
     /// memory) here — anything else leaks into "On My iPhone → Minis".
+    ///
+    /// [T-jb-appgroup-fallback] No force-unwrap: a signature without the App
+    /// Group entitlement gets a plain Application Support directory instead
+    /// (see `SharedContainerStore.sharedDirectory`). Losing Files-app
+    /// visibility beats refusing to launch.
     nonisolated static var minisAppGroupRoot: URL {
-        FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: SharedContainerStore.appGroupID
-        )!.appendingPathComponent("MinisFileProvider", isDirectory: true)
+        SharedContainerStore.sharedDirectory("MinisFileProvider")
     }
 
     /// App Group subdirectory for private metadata that must NOT be exposed
     /// to iOS Files (mounted-folders.json, FileProvider extension logs, etc).
     /// Sibling of `minisAppGroupRoot` inside the same App Group container.
     nonisolated static var minisConfigRoot: URL {
-        let url = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: SharedContainerStore.appGroupID
-        )!.appendingPathComponent("MinisConfig", isDirectory: true)
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
+        SharedContainerStore.sharedDirectory("MinisConfig")
     }
 
     /// Persistent storage directory for memory (shared across all sessions).

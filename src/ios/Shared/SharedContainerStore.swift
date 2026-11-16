@@ -18,6 +18,35 @@ enum SharedContainerStore {
             .appendingPathComponent("ShareExtension", isDirectory: true)
     }
 
+    /// Directory that must exist for the app to run, resolved without ever
+    /// returning nil.
+    ///
+    /// [T-jb-appgroup-fallback] `containerURL(forSecurityApplicationGroupIdentifier:)`
+    /// returns nil whenever the running binary was signed without the
+    /// `com.apple.security.application-groups` entitlement — a free-tier
+    /// Personal Team profile, an ad-hoc signature, or any re-sign that drops
+    /// the group. Callers used to force-unwrap it, so such a build died on
+    /// launch. Falling back to Application Support keeps every path valid;
+    /// the directory simply stops being visible to the FileProvider
+    /// extension and the share extension, which is the only thing an App
+    /// Group actually buys us.
+    static func sharedDirectory(_ component: String) -> URL {
+        let base: URL
+        if let group = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroupID) {
+            base = group
+        } else {
+            let support = FileManager.default
+                .urls(for: .applicationSupportDirectory, in: .userDomainMask)
+                .first
+                ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            base = support.appendingPathComponent("MinisLocal", isDirectory: true)
+        }
+        let url = base.appendingPathComponent(component, isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
     // MARK: - Write (called by Share Extension)
 
     static func savePendingShare(_ share: PendingShare) {

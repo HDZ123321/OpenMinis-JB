@@ -1177,8 +1177,18 @@ struct MinisApp: App {
     /// 4. Old App Group MinisShared/ → App Group MinisFileProvider/shared/
     private static func migrateSharedDirToAppGroup() {
         let fm = FileManager.default
-        let library = fm.urls(for: .libraryDirectory, in: .userDomainMask).first!
-        let container = fm.containerURL(forSecurityApplicationGroupIdentifier: "group.com.openminis.app")!
+        let library = fm.urls(for: .libraryDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        // [T-jb-appgroup-fallback] Was a force-unwrap: with no App Group
+        // entitlement this returns nil and the whole launch died here. The
+        // legacy-container migration below is best-effort anyway — skip it
+        // rather than take the app down.
+        guard let container = fm.containerURL(
+            forSecurityApplicationGroupIdentifier: "group.com.openminis.app"
+        ) else {
+            lifecycleLog.info("[FileProvider] no App Group container (signature lacks the entitlement) — skipping legacy migration")
+            return
+        }
 
         let migrations: [(source: URL, dest: URL, label: String)] = [
             // Legacy Library/MinisChat/shared → new shared

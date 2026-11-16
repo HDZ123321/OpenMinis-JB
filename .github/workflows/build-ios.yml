@@ -202,13 +202,20 @@ jobs:
           cat src/ios/Configs/ProviderCustomization.xcconfig
 
       - name: Build Minis
+        # Release, not Debug. A Debug build is not sideloadable as-is: with
+        # ENABLE_DEBUG_DYLIB (on by default since Xcode 16) the app's main
+        # binary is a ~72 KB stub that loads @rpath/Minis.debug.dylib, and any
+        # re-sign only covers the executable, so the 200 MB nested dylib stays
+        # unsigned and dyld kills the app before main(). Release produces one
+        # real binary and no debug dylib at all. The target also pins
+        # ENABLE_DEBUG_DYLIB = NO so a Debug build behaves the same way.
         run: |
           set -o pipefail
           mkdir -p build
           xcodebuild \
             -project src/ios/Minis.xcodeproj \
             -scheme Minis \
-            -configuration Debug \
+            -configuration Release \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build/DerivedData \
             CODE_SIGNING_ALLOWED=NO \
@@ -216,24 +223,66 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             build 2>&1 | tee build/xcodebuild.log
 
-      - name: Package .app
+      - name: Verify the app is sideloadable
+        # These are the two failure modes that produce an instant crash on
+        # launch with no useful log: a stub executable, and leftover
+        # unsigned debug dylibs. Fail the run rather than ship them.
         run: |
           set -euo pipefail
           APP="$(find build/DerivedData/Build/Products -maxdepth 3 -name 'Minis.app' -type d | head -1)"
           test -n "$APP"
           echo "app: $APP"
+          EXE="$APP/Minis"
+          test -f "$EXE"
+          SIZE=$(stat -f%z "$EXE")
+          echo "main executable: $SIZE bytes"
+          if [ "$SIZE" -lt 5000000 ]; then
+            echo "::error::main executable is $SIZE bytes — that is the debug-dylib stub, not the app"
+            exit 1
+          fi
+          if [ -e "$APP/Minis.debug.dylib" ]; then
+            echo "::error::Minis.debug.dylib is still embedded — ENABLE_DEBUG_DYLIB did not take effect"
+            exit 1
+          fi
+          echo "--- embedded binaries"
+          find "$APP" -maxdepth 2 \( -name '*.dylib' -o -name '*.appex' \) -print || true
+          echo "--- bundle size"
           du -sh "$APP"
+          echo "APP_PATH=$APP" >> "$GITHUB_ENV"
+
+      - name: Package .app
+        run: |
+          set -euo pipefail
           mkdir -p build/artifacts
           # ditto keeps the bundle structure and symlinks intact; plain zip on
           # a .app can lose resource forks Xcode writes.
-          ditto -c -k --sequesterRsrc --keepParent "$APP" build/artifacts/Minis-unsigned.zip
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" build/artifacts/Minis-unsigned.zip
           ls -lh build/artifacts
+
+      - name: Package .ipa
+        # Sideloading tools want an .ipa (a zip with Payload/<name>.app). Doing
+        # it here means the artifact is directly droppable into Sideloadly,
+        # AltStore or ESign without a repack step.
+        run: |
+          set -euo pipefail
+          rm -rf build/ipa
+          mkdir -p build/ipa/Payload
+          cp -R "$APP_PATH" build/ipa/Payload/
+          cd build/ipa
+          # -y keeps symlinks as symlinks; a resolved symlink changes the
+          # bundle layout iOS validates at install time.
+          zip -qry ../artifacts/Minis-unsigned.ipa Payload
+          cd ..
+          ls -lh artifacts
+          unzip -l artifacts/Minis-unsigned.ipa | head -20
 
       - name: Upload unsigned app
         uses: actions/upload-artifact@v4
         with:
           name: Minis-unsigned-${{ github.sha }}
-          path: build/artifacts/*.zip
+          path: |
+            build/artifacts/*.zip
+            build/artifacts/*.ipa
           retention-days: 14
           if-no-files-found: error
 

@@ -12,12 +12,25 @@ final class FileProviderExtension: NSObject, NSFileProviderReplicatedExtension {
     private static let log = OSLog(subsystem: "com.openminis.app.FileProvider", category: "Extension")
 
     /// Root directory for all FileProvider-visible files in the App Group container.
+    ///
+    /// [T-jb-appgroup-fallback] Deliberately not a force-unwrap. A build signed
+    /// without `com.apple.security.application-groups` (free-tier Personal Team,
+    /// ad-hoc re-sign) gets nil here; crashing the appex on every Files-app
+    /// browse is worse than serving it from Application Support, where at
+    /// least the domain loads instead of dying pre-main.
     static var providerRoot: URL {
-        let container = FileManager.default.containerURL(
+        let fm = FileManager.default
+        let base: URL
+        if let container = fm.containerURL(
             forSecurityApplicationGroupIdentifier: "group.com.openminis.app"
-        )!
-        let url = container.appendingPathComponent("MinisFileProvider", isDirectory: true)
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        ) {
+            base = container
+        } else {
+            base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+                ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        }
+        let url = base.appendingPathComponent("MinisFileProvider", isDirectory: true)
+        try? fm.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
 
