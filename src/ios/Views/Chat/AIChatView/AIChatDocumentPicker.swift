@@ -30,6 +30,13 @@ struct AIChatDocumentPicker: UIViewControllerRepresentable {
     var contentTypes: [UTType]?
     var allowsMultipleSelection: Bool = true
     /// Called with the picked URLs. Always on the main actor.
+    ///
+    /// `onCancel` keeps a default value on purpose: the call site uses
+    /// multiple trailing closures (`) { pick } onCancel: { }`), and Swift binds
+    /// the unlabeled one by scanning the parameter list backwards *skipping
+    /// parameters that have defaults* — so it lands on `onPick` only because
+    /// `onCancel` has one. Dropping that default would silently re-bind the
+    /// pick handler to the cancel closure.
     var onPick: ([URL]) -> Void
     /// Called when the user dismisses without picking.
     var onCancel: () -> Void = {}
