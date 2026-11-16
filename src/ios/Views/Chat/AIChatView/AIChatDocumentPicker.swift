@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 /// [T-file-import-silent-failure] Document picker presented as a UIKit
