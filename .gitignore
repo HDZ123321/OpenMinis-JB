@@ -168,3 +168,7 @@ deps/aot/.build-iphonesimulator/
 _harness_lib.js
 _retry_lib.js
 .upload-payload.json
+
+# local artifact downloads and repack scratch
+dl/
+build/

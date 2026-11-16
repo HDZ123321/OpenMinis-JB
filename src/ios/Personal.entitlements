@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlement set for a self-signed build.
+
+  The shipped Minis.entitlements asks for nine capabilities that a free-tier
+  Personal Team profile, an ad-hoc certificate, or most third-party signing
+  services cannot grant. A profile that requests them fails signature
+  validation; one that silently drops them produces a binary that used to
+  crash on the first container lookup.
+
+  This file is the empty set. Use it when building locally with a free Apple
+  ID:
+
+    xcodebuild -project src/ios/Minis.xcodeproj -scheme Minis \
+      -configuration Release -destination 'generic/platform=iOS' \
+      DEVELOPMENT_TEAM=<your team id> \
+      CODE_SIGN_ENTITLEMENTS=src/ios/Personal.entitlements build
+
+  or point each target at it in Signing & Capabilities. The unsigned CI
+  artifact needs nothing from this file — it carries no entitlements blob at
+  all, and the signing tool on the device side supplies whatever its profile
+  allows.
+
+  What degrades, and how:
+
+    App Groups        Files-app visibility of shared/ skills/ memory/ is gone
+                      and the share extension cannot hand attachments over.
+                      Every path still resolves: SharedContainerStore
+                      .sharedDirectory(_:) falls back to Application Support.
+                      This is the only entry that used to crash the app.
+    iCloud/CloudKit   Backup and sync unavailable. Sync is off on a clean
+                      install, so nothing attempts a connection.
+    HealthKit         health offload tools report unavailable.
+    HomeKit           home offload tools report unavailable.
+    NFC               reader unavailable.
+    WeatherKit        weather tool reports unavailable.
+    aps-environment   no push. Nothing registers for remote notifications.
+-->
+<plist version="1.0">
+<dict>
+</dict>
+</plist>

@@ -209,6 +209,13 @@ jobs:
         # unsigned and dyld kills the app before main(). Release produces one
         # real binary and no debug dylib at all. The target also pins
         # ENABLE_DEBUG_DYLIB = NO so a Debug build behaves the same way.
+        #
+        # No entitlements are applied here because nothing is signed: an
+        # unsigned .app carries no entitlements blob at all, and the signing
+        # tool on the user's machine supplies whatever its profile allows. The
+        # code is written to survive that — see SharedContainerStore
+        # .sharedDirectory(_:) and the four call sites that used to
+        # force-unwrap the App Group container.
         run: |
           set -o pipefail
           mkdir -p build
