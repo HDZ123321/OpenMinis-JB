@@ -172,3 +172,20 @@ _retry_lib.js
 # local artifact downloads and repack scratch
 dl/
 build/
+
+# Local test harness. These scripts carry a live endpoint URL and API key, and the
+# captured base prompt; none of that belongs in a public repo.
+jb_lib.js
+jailbreak_harness.js
+jailbreak_retry_chain.js
+test_*.js
+debug_e2e.js
+diff_prompts.js
+extract_base.js
+check_markers.js
+verify_*.js
+balance.js
+collect_keys.js
+add_zh.js
+base_prompt_real.txt
+prompts/
