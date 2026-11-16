@@ -588,10 +588,10 @@ struct JailbreakSettings: Equatable, Sendable {
     static let defaultPrefill = true
     static let defaultReinforce = true
     static let defaultAutoRetry = true
-    static let defaultMaxRetries = 2
+    static let defaultMaxRetries = 4
     static let defaultSubAgents = true
     static let defaultRewriteRequest = true
-    static let defaultRepairFrame = true
+    static let defaultRepairFrame = false
     static let maxRetriesUpperBound = 5
 
     var enabled: Bool = defaultEnabled
