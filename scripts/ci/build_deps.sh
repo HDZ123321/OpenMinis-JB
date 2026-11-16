@@ -17,6 +17,20 @@ ROOT="$PWD"
 echo "repo root: $ROOT"
 date -u +"started %Y-%m-%dT%H:%M:%SZ"
 
+# The iSH VDSO is linked with `-fuse-ld=lld`, and clang resolves that name by
+# searching PATH for ld.lld. Homebrew's llvm ships it in its own bin directory,
+# which is not on PATH by default, so the build dies with
+# "clang: error: invalid linker name in argument '-fuse-ld=lld'".
+#
+# Appended, not prepended: that directory also holds a clang, and putting it
+# first would shadow the Apple toolchain xcodebuild relies on later.
+export PATH="$PATH:/opt/homebrew/opt/llvm/bin"
+if [ -x /opt/homebrew/opt/llvm/bin/ld.lld ]; then
+  echo "ld.lld: /opt/homebrew/opt/llvm/bin/ld.lld"
+else
+  echo "ld.lld: NOT FOUND (iSH VDSO link will fail)"
+fi
+
 # This tree was committed from a Windows filesystem, which has no executable
 # bit, so git recorded every file as mode 100644 — including
 # deps/lame-3.100/configure and the autotools helpers it shells out to. A
