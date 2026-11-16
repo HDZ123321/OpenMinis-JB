@@ -1,0 +1,48 @@
+name: Static checks
+
+# Fast, dependency-free checks that catch the class of mistake the macOS build
+# is too slow to report: unbalanced braces in a hand-edited Swift file, and an
+# AppLocalized key with no Chinese translation. Both scripts are plain Node with
+# no packages, so this finishes in seconds on a Linux runner.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Balance check (Swift sources touched by the content layer)
+        run: |
+          node balance.js \
+            src/ios/Views/Chat/AIChatView/Jailbreak/JailbreakSettings.swift \
+            src/ios/Views/Chat/AIChatView/Jailbreak/JailbreakPromptBuilder.swift \
+            src/ios/Views/Chat/AIChatView/Jailbreak/JailbreakSettingsView.swift \
+            src/ios/Agent/Chat/AIChatViewModel+AgentLoop.swift \
+            src/ios/Agent/Chat/AIChatViewModel+Fallback.swift \
+            src/ios/Agent/Chat/ChatStoreModels.swift \
+            src/ios/Views/Settings/SettingsSheet.swift \
+            src/ios/Shared/DeepLinkCoordinator.swift \
+            src/ios/Shared/DeepLinkRouter.swift
+
+      - name: Localization coverage (content-layer keys)
+        run: node verify_keys.js
+
+      - name: JSON is parseable
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('src/ios/Localizable.xcstrings','utf8')); console.log('Localizable.xcstrings ok')"
+
+      - name: YAML is parseable
+        run: |
+          python3 -c "import sys,yaml,glob; [yaml.safe_load(open(f)) for f in glob.glob('.github/workflows/*.yml')]; print('workflows ok')"
