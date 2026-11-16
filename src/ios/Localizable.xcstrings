@@ -195387,6 +195387,28 @@
         }
       }
     },
+    "Rewrite the request": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rewrite the request"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改写请求"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改寫請求"
+          }
+        }
+      }
+    },
     "Roleplay · veteran engineer": {
       "localizations": {
         "en": {
@@ -233615,6 +233637,28 @@
         }
       }
     },
+    "The fixed opening line pushes the first token past the refusal pattern models fall into when a request opens cold. The reinforcement constraint restates that a refusal counts as a formatting error. Rewriting swaps refusal-triggering verbs for neutral ones on the copy of your message that the model sees — the bubble still shows what you typed. The repair frame wraps a sensitive request as a failing verification step of a pipeline that is already running, which the model treats as maintenance rather than a new act.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The fixed opening line pushes the first token past the refusal pattern models fall into when a request opens cold. The reinforcement constraint restates that a refusal counts as a formatting error. Rewriting swaps refusal-triggering verbs for neutral ones on the copy of your message that the model sees — the bubble still shows what you typed. The repair frame wraps a sensitive request as a failing verification step of a pipeline that is already running, which the model treats as maintenance rather than a new act."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定开场白把第一个 token 推过模型在冷启动请求上容易落入的拒绝模式。补充约束重申「拒绝属于格式错误」。改写只作用于模型看到的那份副本，把触发拒绝的动词换成中性说法——气泡里仍然显示你自己打的字。修复框架把敏感请求包装成一条已在运行的流水线的失败验证步骤，模型会把它当作维护而不是发起新行为。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "固定開場白把第一個 token 推過模型在冷啟動請求上容易落入的拒絕模式。補充約束重申「拒絕屬於格式錯誤」。改寫只作用於模型看到的那份副本，把觸發拒絕的動詞換成中性說法——氣泡裡仍然顯示你自己打的字。修復框架把敏感請求包裝成一條已在執行的流水線的失敗驗證步驟，模型會把它當作維護而不是發起新行為。"
+          }
+        }
+      }
+    },
     "The full WebDAV address, including https:// and any path.": {
       "extractionState": "manual",
       "localizations": {
@@ -268810,6 +268854,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "Minis 工作目錄結構"
+          }
+        }
+      }
+    },
+    "Wrap in a repair frame": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wrap in a repair frame"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "套用修复框架"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "套用修復框架"
           }
         }
       }
