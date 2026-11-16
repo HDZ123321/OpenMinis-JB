@@ -93,31 +93,38 @@ enum JailbreakRequestRewriter {
         return result
     }
 
-    /// 只改写"请求副本"里最后一条用户消息的文本部分。
+    /// 改写"请求副本"里所有非隐藏的用户文本。
     ///
-    /// - 跳过内部提示行（`RawMessage.isInternalBridge`），那些是隐藏 nudge，
-    ///   改写它们会破坏重试链自己的语义。
+    /// 必须遍历全部用户轮，不能只取最后一条：重试时历史是
+    /// `[用户原文, 助手拒答, 隐藏 nudge]`，最后一条用户消息是那条 nudge，
+    /// 跳过它之后就会返回未改写的历史 —— 于是从第 2 次尝试起原始请求又是
+    /// 原样发出去的，实测收益（链 13/18 → 15/18）会全部丢失。
+    ///
+    /// - 跳过内部提示行（`RawMessage.isInternalUserNudgeText`），那些是隐藏
+    ///   nudge，改写它们会破坏重试链自己的语义。
     /// - 改写是幂等的：替换后的词不再命中任何规则，所以多轮重试反复套用
     ///   不会累积变形。
     /// - 返回新数组；`AgentMessage` 是值类型，改的是副本，`agentHistory` 与
     ///   数据库都不受影响。
-    static func rewritingLastUserTurn(_ history: [AgentMessage]) -> [AgentMessage] {
-        guard let lastIndex = history.lastIndex(where: { $0.role == .user }) else {
-            return history
-        }
+    static func rewritingUserTurns(_ history: [AgentMessage]) -> [AgentMessage] {
         var updated = history
-        var message = updated[lastIndex]
-        var changed = false
-        for (partIndex, part) in message.parts.enumerated() {
-            guard case .text(let text) = part else { continue }
-            if RawMessage.isInternalUserNudgeText(text) { continue }
-            let rewritten = rewrite(text)
-            guard rewritten != text else { continue }
-            message.parts[partIndex] = .text(rewritten)
-            changed = true
+        var changedAny = false
+        for index in updated.indices where updated[index].role == .user {
+            var message = updated[index]
+            var changed = false
+            for (partIndex, part) in message.parts.enumerated() {
+                guard case .text(let text) = part else { continue }
+                if RawMessage.isInternalUserNudgeText(text) { continue }
+                let rewritten = rewrite(text)
+                guard rewritten != text else { continue }
+                message.parts[partIndex] = .text(rewritten)
+                changed = true
+            }
+            guard changed else { continue }
+            updated[index] = message
+            changedAny = true
         }
-        guard changed else { return history }
-        updated[lastIndex] = message
+        guard changedAny else { return history }
         return updated
     }
 
@@ -135,6 +142,6 @@ enum JailbreakRequestRewriter {
               settings.appliesInCurrentContext(isHelper: isHelper),
               JailbreakPromptBuilder.resolveFamily(settings: settings, contextHint: contextHint) != .creative
         else { return history }
-        return rewritingLastUserTurn(history)
+        return rewritingUserTurns(history)
     }
 }
