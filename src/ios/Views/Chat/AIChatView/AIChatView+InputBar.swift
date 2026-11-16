@@ -22,6 +22,10 @@ import UIKit
 import UniformTypeIdentifiers
 import WebKit
 
+/// `AIChatView.swift` declares its own file-private `minisLogger`; a private
+/// declaration is invisible from another file, so this extension needs its own.
+private let inputBarLogger = AppLogger(category: "FileImport")
+
 extension AIChatView {
     // MARK: - Input keyboard handlers (extracted to avoid inflating the
     // generic type of `inputBar` past what Swift can demangle at runtime).
@@ -76,6 +80,66 @@ extension AIChatView {
         vm.inputCaret = caret
     }
 
+    /// Handles the URLs returned by `AIChatDocumentPicker`.
+    ///
+    /// [T-file-import-silent-failure] Every branch that can end without a chip
+    /// on screen now says why. Before this, a failed copy only reached the
+    /// log, so "I picked a file and nothing happened" was indistinguishable
+    /// from a lost picker callback — and the picker callback really was being
+    /// lost, because `.fileImporter`'s closure is dropped when this view's
+    /// modifier chain rebuilds mid-presentation.
+    ///
+    /// Staging failures set `transientNotice` themselves (`AIChatFileStaging`
+    /// carries the reason), so this only reports when *nothing at all* landed
+    /// and staging stayed silent — an empty selection.
+    func handlePickedDocuments(_ urls: [URL]) {
+        guard !urls.isEmpty else {
+            inputBarLogger.info("[FileImport] picker returned an empty selection")
+            vm.transientNotice = AppLocalized("No file was selected.")
+            return
+        }
+        var added = 0
+        for url in urls where vm.addFileAttachment(from: url) {
+            added += 1
+        }
+        inputBarLogger.info("[FileImport] attached \(added)/\(urls.count), chips now \(vm.attachments.count)")
+        if added == 0, vm.transientNotice == nil {
+            vm.transientNotice = AppLocalized("The file could not be attached.")
+        }
+    }
+
+    /// Height of the attachment chip strip.
+    ///
+    /// [T-attachment-grid-zero-height] `attachmentGridHeight` is a preference
+    /// measured inside the strip's own ScrollView. It is 0 until that
+    /// measurement lands, and `min(0, 160)` collapses the strip to nothing —
+    /// chips exist, the composer has grown by 8pt of padding, and the user sees
+    /// an empty bar, which reads exactly like "the file never attached".
+    ///
+    /// Chips are a fixed 64pt square with 8pt spacing and 6pt top padding
+    /// (`InputAttachmentGridView`), so the needed height is computable without
+    /// measuring. Take the larger of the two: a real measurement wins once it
+    /// arrives, and the computed value covers the window before that.
+    var attachmentStripHeight: CGFloat {
+        let chip: CGFloat = 64
+        let spacing: CGFloat = 8
+        let topPadding: CGFloat = 6
+        let horizontalPadding: CGFloat = 32   // 16 leading + 16 trailing
+        // `inputBottomRowWidth` is measured by the composer's own geometry
+        // observer; before the first pass fall back to the window width so the
+        // computed height is a sane approximation rather than a divide-by-zero.
+        let rowWidth = inputBottomRowWidth > 0
+            ? inputBottomRowWidth
+            : UIScreen.main.bounds.width - horizontalPadding
+        let available = max(rowWidth, chip)
+        let perRow = max(Int((available + spacing) / (chip + spacing)), 1)
+        let count = max(vm.attachments.count + vm.loadingVideoCount, 1)
+        let rows = CGFloat((count + perRow - 1) / perRow)
+        let computed = rows * chip + (rows - 1) * spacing + topPadding
+        let measured = attachmentGridHeight > 0 ? attachmentGridHeight : computed
+        return min(max(measured, computed), 160)
+    }
+
     var inputBar: some View {
         VStack(spacing: 0) {
             if vm.isSuspended {
@@ -110,7 +174,16 @@ extension AIChatView {
                                 Color.clear.preference(key: AttachmentGridHeightKey.self, value: geo.size.height)
                             })
                     }
-                    .frame(height: min(attachmentGridHeight, 160))
+                    // [T-attachment-grid-zero-height] The strip is sized from a
+                    // preference measured INSIDE this scroll view, so on the
+                    // first layout pass the frame is 0 — and if that preference
+                    // never lands (measured while the composer was off-screen,
+                    // or a re-layout raced the measurement) it stays 0 and the
+                    // chips are laid out at zero height: the picker closes, the
+                    // attachment exists, and the user sees nothing. Fall back to
+                    // a computed height so a missing measurement degrades to a
+                    // correct-looking strip instead of an invisible one.
+                    .frame(height: attachmentStripHeight)
                     .onPreferenceChange(AttachmentGridHeightKey.self) { attachmentGridHeight = $0 }
                     .padding(.top, 8)
                 }
