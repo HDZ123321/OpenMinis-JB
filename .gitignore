@@ -163,3 +163,8 @@ src/android/app/libs/rclone.aar
 deps/aot/*.S
 deps/aot/.build/
 deps/aot/.build-iphonesimulator/
+
+# Local scratch used by the jailbreak test harness (regenerated on demand)
+_harness_lib.js
+_retry_lib.js
+.upload-payload.json
