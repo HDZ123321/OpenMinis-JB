@@ -60,7 +60,10 @@ jobs:
           # BUILDING.md: ninja, llvm, libarchive, pkg-config from Homebrew;
           # meson from pip. The runner image already carries ninja, Go, Python
           # and Homebrew itself, so only the rest is installed here.
-          brew install llvm libarchive pkg-config
+          #
+          # `lld` is separate from `llvm` and is not optional: iSH links its
+          # guest VDSO with -fuse-ld=lld.
+          brew install llvm lld libarchive pkg-config
 
           # meson must land on PATH for the later steps. With Homebrew's Python
           # a plain `--user` install goes to ~/Library/Python/3.x/bin, not
@@ -100,6 +103,15 @@ jobs:
           need ninja ninja
           need pkg-config pkg-config
           need go go
+
+          # iSH's guest VDSO is linked with -fuse-ld=lld, so ld.lld has to be
+          # reachable. It comes from the separate `lld` formula, not `llvm`.
+          if [ -x /opt/homebrew/opt/lld/bin/ld.lld ]; then
+            echo "OK   ld.lld -> /opt/homebrew/opt/lld/bin/ld.lld"
+          else
+            echo "MISS ld.lld -> /opt/homebrew/opt/lld/bin/ld.lld (brew install lld)"
+            fail=1
+          fi
 
           # build_ish.sh looks for clang at this exact path to build the guest
           # VDSO. A miss is only a warning there, but a missing VDSO makes the
