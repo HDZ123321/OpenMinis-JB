@@ -17,6 +17,23 @@ ROOT="$PWD"
 echo "repo root: $ROOT"
 date -u +"started %Y-%m-%dT%H:%M:%SZ"
 
+# This tree was committed from a Windows filesystem, which has no executable
+# bit, so git recorded every file as mode 100644 — including
+# deps/lame-3.100/configure and the autotools helpers it shells out to. A
+# checkout therefore fails at the first `./configure` with "Permission denied".
+# Rather than enumerate the scripts (and miss one), restore the bit on anything
+# that declares an interpreter.
+restore_exec_bits() {
+  local count=0 f
+  while IFS= read -r -d '' f; do
+    if [ "$(head -c 2 "$f" 2>/dev/null)" = '#!' ]; then
+      chmod +x "$f"
+      count=$((count + 1))
+    fi
+  done < <(find . -type f -not -path './.git/*' -not -path './build/*' -print0)
+  echo "restored exec bit on $count script(s)"
+}
+
 step() {
   local label="$1"; shift
   echo
@@ -27,11 +44,12 @@ step() {
   echo "-- done: $label   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 
-step "LAME"                    bash deps/build_lame.sh
-step "FFmpeg"                  bash deps/build_ffmpeg.sh
-step "iSH"                     bash deps/build_ish.sh
-step "Alpine rootfs"           bash deps/prepare_alpine_rootfs.sh
-step "rclone"                  bash deps/build_rclone_ios.sh
+step "Normalize file modes"      restore_exec_bits
+step "LAME"                     bash deps/build_lame.sh
+step "FFmpeg"                   bash deps/build_ffmpeg.sh
+step "iSH"                      bash deps/build_ish.sh
+step "Alpine rootfs"            bash deps/prepare_alpine_rootfs.sh
+step "rclone"                   bash deps/build_rclone_ios.sh
 
 echo
 echo "=== dependency sizes ==="
