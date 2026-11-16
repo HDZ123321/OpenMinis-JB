@@ -321,13 +321,24 @@ enum JailbreakRefusalDetector {
 
     /// 开场即拒绝的硬标记。只在前 80 字里找 —— 拒绝的形态是「开口就拒」，
     /// 正文中段出现「我不能」通常是角色台词或技术描述，不该判为拒绝。
+    ///
+    /// 「我没法写」「不在我能提供的范围内」是实测里最常见的两种软性拒绝，
+    /// 模型不写「无法」而写「没法」，漏掉它们等于重试机制不触发。
     static let openingMarkers: [String] = [
-        "我不能", "我无法", "无法提供", "无法协助", "不能协助", "不能提供",
-        "不便提供", "无法满足", "超出我的",
-        "这个不写", "不接", "不做这个", "换别的", "换个题材",
-        "这个不行", "我不能写", "不方便写",
+        "我不能", "我无法", "我没法", "无法提供", "无法协助", "无法写", "无法满足",
+        "不能协助", "不能提供", "不能写", "不便提供", "超出我的",
+        "这个不写", "这个我没法", "没法写", "没法提供", "不接", "不做这个",
+        "换别的", "换个题材", "这个不行", "我不能写", "不方便写",
+        "不在我能", "不在我的能力",
         "I can't", "I cannot", "I won't",
         "unable to", "not able to", "cannot assist", "can't help",
+    ]
+
+    /// 内容特征。出现这些说明回复已经在给实质内容，不是拒单。
+    /// 用来压掉「代码里有个 bug：当 n 为 0 时我不能确定行为」这类误判 ——
+    /// 那句话里有「我不能」，但它显然在讨论代码。
+    static let contentMarkers: [String] = [
+        "：", "```", "1.", "1、", "步骤", "参数",
     ]
 
     /// 致歉式开场。范围更窄（前 30 字），因为「抱歉」「对不起」在创作类
@@ -354,13 +365,42 @@ enum JailbreakRefusalDetector {
     ]
 
     /// 返回 (是否像拒绝, 命中原因)。
+    ///
+    /// 硬标记不能一命中就判死：中文里「我不能」也出现在正常正文里
+    /// （「当 n 为 0 时我不能确定行为」）。判据是**位置**——拒绝是开口
+    /// 就拒，内容标记（冒号、代码块、编号）绝不会出现在它前面。
     static func inspect(_ text: String) -> (Bool, String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return (false, "") }
 
         let opening = String(trimmed.prefix(80))
-        for marker in openingMarkers where opening.contains(marker) {
-            return (true, "hard:\(marker)")
+        let openingLower = opening.lowercased()
+
+        // 最早的硬标记位置。
+        var markerIndex: Int? = nil
+        var markerHit = ""
+        for marker in openingMarkers {
+            guard let r = openingLower.range(of: marker.lowercased()) else { continue }
+            let idx = opening.distance(from: opening.startIndex, to: r.lowerBound)
+            if markerIndex == nil || idx < markerIndex! {
+                markerIndex = idx
+                markerHit = marker
+            }
+        }
+
+        // 最早的内容标记位置。早于硬标记出现，说明这句话在讲内容而不是拒单。
+        var contentIndex: Int? = nil
+        for marker in contentMarkers {
+            guard let r = opening.range(of: marker) else { continue }
+            let idx = opening.distance(from: opening.startIndex, to: r.lowerBound)
+            if contentIndex == nil || idx < contentIndex! { contentIndex = idx }
+        }
+
+        if let mi = markerIndex {
+            let contentFirst = contentIndex.map { $0 < mi } ?? false
+            if !contentFirst {
+                return (true, "hard:\(markerHit)")
+            }
         }
 
         let salutation = String(trimmed.prefix(30))
@@ -373,7 +413,7 @@ enum JailbreakRefusalDetector {
             // 否定词必须在开头就出现：拒绝是一开口就拒，不是写到一半才提。
             let lead = String(body.prefix(40))
             let neg = negWords.filter { lead.contains($0) }
-            let hasDetail = ["：", "1.", "1、", "步骤", "参数", "```"].contains { body.contains($0) }
+            let hasDetail = contentMarkers.contains { body.contains($0) }
             if let first = neg.first, !hasDetail {
                 return (true, "short_neg:\(first)")
             }
