@@ -579,6 +579,8 @@ struct JailbreakSettings: Equatable, Sendable {
     static let maxRetriesKey = "jailbreak.maxRetries"
     static let subAgentsKey = "jailbreak.subAgents"
     static let extraPromptKey = "jailbreak.extraPrompt"
+    static let repairFrameKey = "jailbreak.repairFrame"
+    static let rewriteRequestKey = "jailbreak.rewriteRequest"
 
     static let defaultEnabled = false
     static let defaultFamily = JailbreakFamily.auto
@@ -588,6 +590,8 @@ struct JailbreakSettings: Equatable, Sendable {
     static let defaultAutoRetry = true
     static let defaultMaxRetries = 2
     static let defaultSubAgents = true
+    static let defaultRewriteRequest = true
+    static let defaultRepairFrame = true
     static let maxRetriesUpperBound = 5
 
     var enabled: Bool = defaultEnabled
@@ -600,6 +604,8 @@ struct JailbreakSettings: Equatable, Sendable {
     var autoRetry: Bool = defaultAutoRetry
     var maxRetries: Int = defaultMaxRetries
     var subAgents: Bool = defaultSubAgents
+    var rewriteRequest: Bool = defaultRewriteRequest
+    var repairFrame: Bool = defaultRepairFrame
     var extraPrompt: String = ""
 
     /// 生效中的模板与开场白。锁定模板优先于阶梯。
@@ -652,6 +658,12 @@ struct JailbreakSettings: Equatable, Sendable {
         if defaults.object(forKey: subAgentsKey) != nil {
             s.subAgents = defaults.bool(forKey: subAgentsKey)
         }
+        if defaults.object(forKey: repairFrameKey) != nil {
+            s.repairFrame = defaults.bool(forKey: repairFrameKey)
+        }
+        if defaults.object(forKey: rewriteRequestKey) != nil {
+            s.rewriteRequest = defaults.bool(forKey: rewriteRequestKey)
+        }
         s.extraPrompt = defaults.string(forKey: extraPromptKey) ?? ""
         return s
     }
@@ -666,13 +678,16 @@ struct JailbreakSettings: Equatable, Sendable {
         defaults.set(autoRetry, forKey: Self.autoRetryKey)
         defaults.set(Self.clampRetries(maxRetries), forKey: Self.maxRetriesKey)
         defaults.set(subAgents, forKey: Self.subAgentsKey)
+        defaults.set(repairFrame, forKey: Self.repairFrameKey)
+        defaults.set(rewriteRequest, forKey: Self.rewriteRequestKey)
         defaults.set(extraPrompt, forKey: Self.extraPromptKey)
     }
 
     /// 清空本层写入的全部 key。恢复默认时用。
     static func purge(_ defaults: UserDefaults = .standard) {
         for key in [enabledKey, familyKey, templateKey, levelKey, prefillKey,
-                    reinforceKey, autoRetryKey, maxRetriesKey, subAgentsKey, extraPromptKey] {
+                    reinforceKey, autoRetryKey, maxRetriesKey, subAgentsKey, extraPromptKey,
+                    repairFrameKey, rewriteRequestKey] {
             defaults.removeObject(forKey: key)
         }
     }
