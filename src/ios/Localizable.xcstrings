@@ -149291,6 +149291,28 @@
         }
       }
     },
+    "No file was selected.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No file was selected."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有选中文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒有選中檔案。"
+          }
+        }
+      }
+    },
     "No folders here.": {
       "extractionState": "manual",
       "localizations": {
@@ -233370,6 +233392,28 @@
         }
       }
     },
+    "The document provider did not hand the file over. Open it once in the Files app, then pick it again.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The document provider did not hand the file over. Open it once in the Files app, then pick it again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件提供方没有把文件交出来。先在「文件」App 里打开它一次，再重新选择。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檔案提供者沒有把檔案交出來。先在「檔案」App 裡打開它一次，再重新選擇。"
+          }
+        }
+      }
+    },
     "The field is omitted entirely when thinking is off.": {
       "extractionState": "manual",
       "localizations": {
@@ -233479,6 +233523,72 @@
           "stringUnit": {
             "state": "translated",
             "value": "思考關閉時會完全省略這個欄位。"
+          }
+        }
+      }
+    },
+    "The file could not be attached.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file could not be attached."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件没能添加。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檔案沒能加入。"
+          }
+        }
+      }
+    },
+    "The file could not be copied into Minis.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file could not be copied into Minis."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件没能复制进 Minis。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檔案沒能複製進 Minis。"
+          }
+        }
+      }
+    },
+    "The file could not be read. If it is stored in iCloud Drive or a cloud provider, download it in the Files app first.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file could not be read. If it is stored in iCloud Drive or a cloud provider, download it in the Files app first."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读不到这个文件。如果它在 iCloud 云盘或第三方网盘里，请先在「文件」App 里下载到本机。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "讀不到這個檔案。如果它在 iCloud 雲碟或第三方雲端硬碟裡，請先在「檔案」App 裡下載到本機。"
           }
         }
       }
