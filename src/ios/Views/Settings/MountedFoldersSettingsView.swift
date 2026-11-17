@@ -25,11 +25,68 @@ private struct PendingMount: Identifiable {
     var allowWrite: Bool
 }
 
+/// One sheet, two steps.
+///
+/// [T-mount-sheet-single] This used to be two `.sheet` modifiers chained on the
+/// same `List` — one `isPresented` for the document picker, one `item` for the
+/// Add-Mount form. SwiftUI only honours one sheet per view, so the picker
+/// presented and the confirm form never did: the user tapped 打开 and the
+/// screen simply went back, with no form and no error. A single `.sheet(item:)`
+/// whose identity changes between the two steps is the only shape that works,
+/// and `onDismiss` is what guarantees the picker is fully gone before the form
+/// is presented (iOS refuses to stack two sheets).
+private enum MountFlow: String, Identifiable {
+    case picker
+    case confirm
+
+    var id: String { rawValue }
+}
+
+/// One alert slot for the screen: the picker hint and the add-failure message
+/// cannot be two `.alert` modifiers on the same view for the same reason two
+/// `.sheet` modifiers could not coexist — SwiftUI keeps one presentation per
+/// kind and silently drops the loser.
+private enum MountAlert: Identifiable, Equatable {
+    case pickerHint
+    case failure(String)
+
+    var id: String {
+        switch self {
+        case .pickerHint: return "pickerHint"
+        case .failure: return "failure"
+        }
+    }
+}
+
 struct MountedFoldersSettingsView: View {
     @StateObject private var model = MountedFoldersViewModel()
-    @State private var showingPicker = false
+    @State private var flow: MountFlow?
+    /// Which step the sheet most recently rendered. `onDismiss` runs after
+    /// `flow` has already been reset to nil, so this is the only way to know
+    /// whether the picker or the confirm form just went away — advancing on a
+    /// dismissed *confirm* form would re-present it forever (swipe-to-dismiss
+    /// leaves `pendingMount` set).
+    @State private var stepShown: MountFlow = .picker
+    /// Set when the picker returns a folder, consumed by `onDismiss` to present
+    /// the confirm step on the next presentation cycle.
     @State private var pendingMount: PendingMount?
-    @State private var errorText: String?
+    /// One alert slot for the whole screen.
+    ///
+    /// [T-mount-picker-hint] A second `.alert` modifier on the same view is the
+    /// same trap as the second `.sheet` that caused the original bug: SwiftUI
+    /// keeps one presentation per kind, so whichever alert loses the race just
+    /// never appears. Driving both the error and the first-tap hint through one
+    /// enum-backed alert is the only shape that cannot silently drop one.
+    @State private var alert: MountAlert?
+    /// First-tap explanation, shown before the picker ever appears.
+    ///
+    /// [T-mount-picker-hint] The picker opens inside Minis' own iCloud
+    /// container, which normally holds files but no subfolders — so every row
+    /// is greyed out and 打开 does nothing at all. That reads as "the button is
+    /// broken" and is exactly how this got reported. Saying where to navigate
+    /// *before* the picker opens is the only place the instruction is still
+    /// readable; a footnote under an empty list is not seen until afterwards.
+    @AppStorage("mount.pickerHintShown") private var pickerHintShown = false
 
     var body: some View {
         List {
@@ -48,6 +105,16 @@ struct MountedFoldersSettingsView: View {
                         Text("Tap + to pick a folder from Files (e.g. an Obsidian vault in iCloud Drive).")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        // [T-mount-sheet-single] The picker opens inside the
+                        // Minis container, which usually holds only files and
+                        // has no subfolders — the Open button then does nothing
+                        // because there is nothing selectable. Tell the user
+                        // where to navigate instead of letting them conclude
+                        // the feature is broken.
+                        Text("In the picker, switch to Browse → On My iPhone or iCloud Drive, open the folder you want, then tap Open.")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
@@ -97,74 +164,162 @@ struct MountedFoldersSettingsView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    showingPicker = true
+                    if pickerHintShown {
+                        stepShown = .picker
+                        flow = .picker
+                    } else {
+                        pickerHintShown = true
+                        alert = .pickerHint
+                    }
                 } label: {
                     Image(systemName: "plus")
                 }
                 .disabled(model.isAtCapacity)
             }
         }
-        .sheet(isPresented: $showingPicker) {
-            FolderPicker { url in
-                // `UIDocumentPickerViewController` fires its `didPickDocumentsAt`
-                // delegate *after* SwiftUI has already started dismissing the
-                // sheet, but we still need to wait until the dismissal fully
-                // finishes before presenting a second sheet — iOS refuses to
-                // stack two sheets, so assigning `pendingMount` synchronously
-                // here silently drops the presentation on first try.
-                // Hopping to the next run loop tick lets the picker sheet
-                // finish leaving the hierarchy first.
-                mountUILogger.info("FolderPicker onPick url=\(url.path)")
+        .sheet(item: $flow, onDismiss: {
+            // [T-mount-sheet-single] The picker and the confirm form cannot be
+            // two `.sheet` modifiers on one view — SwiftUI presents the first
+            // and silently drops the second, which is exactly the "tap 打开,
+            // nothing happens" report. One sheet whose identity changes drives
+            // both steps; this hook is what advances picker → form, and it only
+            // runs once the picker has actually left the hierarchy (iOS refuses
+            // to stack two sheets).
+            if stepShown == .picker, let picked = pendingMount {
+                mountUILogger.info("[Mount] advancing to confirm step for \(picked.url.path)")
+                // Hopping one tick is deliberate: `onDismiss` runs while the
+                // picker's dismissal animation is still settling, and setting a
+                // new sheet identity synchronously there can be swallowed the
+                // same way the two-modifier version was.
                 DispatchQueue.main.async {
-                    let pm = PendingMount(
-                        url: url,
-                        name: Self.defaultMountName(for: url),
-                        allowWrite: true
+                    stepShown = .confirm
+                    flow = .confirm
+                }
+            } else if stepShown == .confirm {
+                // The confirm form went away (mounted, cancelled, or swiped).
+                // Either way the picked URL is spent; keeping it around would
+                // leave a stale pending value for the next presentation.
+                pendingMount = nil
+            }
+        }) { step in
+            switch step {
+            case .picker:
+                FolderPicker(
+                    onPick: { url in
+                        mountUILogger.info("[Mount] picker returned \(url.path) (isDirectory=\(Self.isDirectory(url)))")
+                        guard Self.isDirectory(url) else {
+                            // A `.folder` picker should never hand back a file,
+                            // but third-party providers have been seen doing it.
+                            // Say so instead of opening a form that will fail on
+                            // bookmarkData().
+                            pendingMount = nil
+                            flow = nil
+                            // Present after the sheet has actually gone: an
+                            // alert raised in the same update as a sheet
+                            // dismissal loses the race the same way the second
+                            // sheet did.
+                            DispatchQueue.main.async {
+                                alert = .failure(AppLocalized("The item you picked is a file, not a folder. Open the folder first, then tap Open."))
+                            }
+                            return
+                        }
+                        pendingMount = PendingMount(
+                            url: url,
+                            name: Self.defaultMountName(for: url),
+                            allowWrite: true
+                        )
+                        flow = nil
+                    },
+                    onCancel: {
+                        mountUILogger.info("[Mount] picker cancelled with no selection")
+                        pendingMount = nil
+                        flow = nil
+                    }
+                )
+            case .confirm:
+                if let pending = pendingMount {
+                    AddMountSheet(
+                        sourceURL: pending.url,
+                        name: Binding(
+                            get: { pendingMount?.name ?? pending.name },
+                            set: { pendingMount?.name = $0 }
+                        ),
+                        allowWrite: Binding(
+                            get: { pendingMount?.allowWrite ?? pending.allowWrite },
+                            set: { pendingMount?.allowWrite = $0 }
+                        ),
+                        onCancel: {
+                            pendingMount = nil
+                            flow = nil
+                        },
+                        onConfirm: {
+                            let current = pendingMount ?? pending
+                            mountUILogger.info("[Mount] confirm name=\(current.name) write=\(current.allowWrite) url=\(current.url.path)")
+                            do {
+                                _ = try model.add(
+                                    pickedURL: current.url,
+                                    customName: current.name,
+                                    userAllowWrite: current.allowWrite
+                                )
+                                mountUILogger.info("[Mount] added \(current.name), total=\(model.entries.count)")
+                            } catch {
+                                mountUILogger.error("[Mount] add failed: \(error.localizedDescription)")
+                                let message = error.localizedDescription
+                                pendingMount = nil
+                                flow = nil
+                                DispatchQueue.main.async { alert = .failure(message) }
+                                return
+                            }
+                            pendingMount = nil
+                            flow = nil
+                        }
                     )
-                    mountUILogger.info("async assign pendingMount id=\(pm.id.uuidString) url=\(url.path)")
-                    pendingMount = pm
+                } else {
+                    // Only reachable if state was cleared out from under us.
+                    Color.clear.onAppear { flow = nil }
                 }
             }
         }
-        .sheet(item: $pendingMount) { pending in
-            // IMPORTANT: read from the `pending` closure parameter, not from
-            // `pendingMount?.url` — the Optional state binding can be
-            // momentarily nil while SwiftUI re-routes the sheet, which blanks
-            // out the Source Path field.
-            AddMountSheet(
-                sourceURL: pending.url,
-                name: Binding(
-                    get: { pendingMount?.name ?? pending.name },
-                    set: { pendingMount?.name = $0 }
-                ),
-                allowWrite: Binding(
-                    get: { pendingMount?.allowWrite ?? pending.allowWrite },
-                    set: { pendingMount?.allowWrite = $0 }
-                ),
-                onCancel: {
-                    pendingMount = nil
-                },
-                onConfirm: {
-                    let current = pendingMount ?? pending
-                    do {
-                        _ = try model.add(
-                            pickedURL: current.url,
-                            customName: current.name,
-                            userAllowWrite: current.allowWrite
-                        )
-                    } catch {
-                        errorText = error.localizedDescription
+        .alert(alertTitle, isPresented: Binding(
+            get: { alert != nil },
+            set: { if !$0 { alert = nil } }
+        )) {
+            if alert == .pickerHint {
+                Button(AppLocalized("Got it")) {
+                    // Same one-tick hop as everywhere else on this screen: the
+                    // alert is still on its way out, and presenting the picker
+                    // in the same update is dropped.
+                    DispatchQueue.main.async {
+                        stepShown = .picker
+                        flow = .picker
                     }
-                    pendingMount = nil
                 }
-            )
-        }
-        .alert(AppLocalized("Error"),
-               isPresented: Binding(get: { errorText != nil },
-                                    set: { if !$0 { errorText = nil } })) {
-            Button(AppLocalized("OK"), role: .cancel) { errorText = nil }
+                Button(AppLocalized("Cancel"), role: .cancel) {}
+            } else {
+                Button(AppLocalized("OK"), role: .cancel) {}
+            }
         } message: {
-            Text(errorText ?? "")
+            Text(alertMessage)
+        }
+    }
+
+    private var alertTitle: String {
+        // Unwrap before switching: Swift does not match bare enum cases against
+        // an optional, and a `.none` arm here would only ever fire mid-dismissal.
+        guard let alert else { return AppLocalized("Error") }
+        switch alert {
+        case .pickerHint: return AppLocalized("Pick a folder, not a file")
+        case .failure: return AppLocalized("Error")
+        }
+    }
+
+    private var alertMessage: String {
+        guard let alert else { return "" }
+        switch alert {
+        case .pickerHint:
+            return AppLocalized("The picker opens inside Minis' own folder, where there is usually nothing to select — the Open button then does nothing. Switch to Browse → On My iPhone or iCloud Drive first, open the folder you want, then tap Open.")
+        case .failure(let message):
+            return message
         }
     }
 
@@ -192,6 +347,20 @@ struct MountedFoldersSettingsView: View {
             initialVisibleInFiles: true,
             isReadOnlyFromFiles: false
         )
+    }
+
+    /// Whether the picked URL really is a folder.
+    ///
+    /// [T-mount-sheet-single] `UIDocumentPickerViewController(forOpeningContentTypes:
+    /// [.folder])` is supposed to only return folders, but third-party
+    /// FileProviders (and the iCloud container root under some iOS builds) have
+    /// been observed handing back a file URL when the user taps 打开 with
+    /// nothing selected inside the container. Checking here turns a silent
+    /// bookmark failure into a sentence the user can act on.
+    private static func isDirectory(_ url: URL) -> Bool {
+        if url.hasDirectoryPath { return true }
+        let values = try? url.resourceValues(forKeys: [.isDirectoryKey])
+        return values?.isDirectory ?? false
     }
 
     /// Trivial / meaningless segments often appearing at the end of an iCloud
@@ -398,27 +567,57 @@ private struct AddMountSheet: View {
 
 // MARK: - Folder picker
 
+/// Folder picker for choosing a mount source.
+///
+/// [T-mount-sheet-single] Two changes from the original:
+///  - `onCancel` exists. Without it a cancelled pick and a dropped delegate
+///    callback looked identical (sheet disappears, nothing happens), which is
+///    the bug this file was reported for.
+///  - `asCopy: false` — a mount keeps a security-scoped bookmark to the folder
+///    in place. `asCopy: true` would copy the folder into our temp directory
+///    and the bookmark would point at a copy that gets deleted, so mounts would
+///    appear to work once and then read as empty.
 private struct FolderPicker: UIViewControllerRepresentable {
     let onPick: (URL) -> Void
+    var onCancel: () -> Void = {}
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder])
+        let picker = UIDocumentPickerViewController(
+            forOpeningContentTypes: [.folder],
+            asCopy: false
+        )
         picker.delegate = context.coordinator
         picker.allowsMultipleSelection = false
+        picker.shouldShowFileExtensions = true
         return picker
     }
 
     func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
 
-    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onPick: onPick, onCancel: onCancel)
+    }
 
     final class Coordinator: NSObject, UIDocumentPickerDelegate {
         let onPick: (URL) -> Void
-        init(onPick: @escaping (URL) -> Void) { self.onPick = onPick }
+        let onCancel: () -> Void
+
+        init(onPick: @escaping (URL) -> Void, onCancel: @escaping () -> Void) {
+            self.onPick = onPick
+            self.onCancel = onCancel
+        }
 
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            guard let url = urls.first else { return }
+            guard let url = urls.first else {
+                mountUILogger.warning("[Mount] didPickDocumentsAt fired with no URL")
+                onCancel()
+                return
+            }
             onPick(url)
+        }
+
+        func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+            onCancel()
         }
     }
 }
