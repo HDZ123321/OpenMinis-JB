@@ -450,9 +450,42 @@ private struct FolderPicker: UIViewControllerRepresentable {
             for: .documentDirectory,
             in: .userDomainMask
         ).first {
+            Self.seedInboxIfNeeded(in: documents)
             picker.directoryURL = documents
+            mountUILogger.info("[Mount] picker starting at \(documents.path)")
+        } else {
+            mountUILogger.warning("[Mount] picker has no Documents URL; falling back to the system default")
         }
         return picker
+    }
+
+    /// Guarantee Documents has at least one subfolder.
+    ///
+    /// [T-mount-sideload-picker] A picker opened on an empty directory with a
+    /// `.folder` content filter is a dead end: no row can be selected, so the
+    /// "Open" button never enables and the screen looks broken even though it
+    /// is behaving correctly. A fresh sideload has an empty Documents, so this
+    /// happens on the very first attempt. Seeding one folder makes the starting
+    /// screen actionable, and the same folder is where the user can drop files
+    /// from the Files app.
+    private static func seedInboxIfNeeded(in documents: URL) {
+        let fm = FileManager.default
+        let contents = (try? fm.contentsOfDirectory(
+            at: documents,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )) ?? []
+        let hasFolder = contents.contains { url in
+            (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+        }
+        guard !hasFolder else { return }
+        let inbox = documents.appendingPathComponent("Inbox", isDirectory: true)
+        do {
+            try fm.createDirectory(at: inbox, withIntermediateDirectories: true)
+            mountUILogger.info("[Mount] seeded \(inbox.path) so the folder picker has a selectable row")
+        } catch {
+            mountUILogger.warning("[Mount] could not seed Inbox in Documents: \(error.localizedDescription)")
+        }
     }
 
     func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
