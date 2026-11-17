@@ -107366,6 +107366,28 @@
         }
       }
     },
+    "Got it": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Got it"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "知道了"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "知道了"
+          }
+        }
+      }
+    },
     "Granted": {
       "extractionState": "manual",
       "localizations": {
@@ -115589,6 +115611,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "進行中"
+          }
+        }
+      }
+    },
+    "In the picker, switch to Browse → On My iPhone or iCloud Drive, open the folder you want, then tap Open.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the picker, switch to Browse → On My iPhone or iCloud Drive, open the folder you want, then tap Open."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在文件选择器里切到「浏览」→「我的 iPhone」或「iCloud 云盘」，进到目标文件夹，再点右上角「打开」。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在檔案選擇器裡切到「瀏覽」→「我的 iPhone」或「iCloud 雲碟」，進到目標資料夾，再點右上角「打開」。"
           }
         }
       }
@@ -168666,6 +168710,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "從「檔案」、iCloud Drive 或任何已連線的儲存空間選擇 .minisbak 檔案。"
+          }
+        }
+      }
+    },
+    "Pick a folder, not a file": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick a folder, not a file"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要选文件夹，不是文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要選資料夾，不是檔案"
           }
         }
       }
@@ -233870,6 +233936,28 @@
         }
       }
     },
+    "The item you picked is a file, not a folder. Open the folder first, then tap Open.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The item you picked is a file, not a folder. Open the folder first, then tap Open."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选中的是文件，不是文件夹。先进到目标文件夹里，再点「打开」。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選中的是檔案，不是資料夾。先進到目標資料夾裡，再點「打開」。"
+          }
+        }
+      }
+    },
     "The microphone is in use by another app (e.g. FaceTime or a phone call). Please try again after it finishes.": {
       "extractionState": "manual",
       "localizations": {
@@ -234476,6 +234564,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "上方路徑是 iOS 對所選資料夾的展示方式，可據此確認資料所屬 App。"
+          }
+        }
+      }
+    },
+    "The picker opens inside Minis' own folder, where there is usually nothing to select — the Open button then does nothing. Switch to Browse → On My iPhone or iCloud Drive first, open the folder you want, then tap Open.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The picker opens inside Minis' own folder, where there is usually nothing to select — the Open button then does nothing. Switch to Browse → On My iPhone or iCloud Drive first, open the folder you want, then tap Open."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择器会先打开 Minis 自己的目录，里面通常只有文件、没有可选的东西，这时点「打开」不会有反应。先切到「浏览」→「我的 iPhone」或「iCloud 云盘」，进到目标文件夹，再点右上角「打开」。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇器會先打開 Minis 自己的目錄，裡面通常只有檔案、沒有可選的東西，這時點「打開」不會有反應。先切到「瀏覽」→「我的 iPhone」或「iCloud 雲碟」，進到目標資料夾，再點右上角「打開」。"
           }
         }
       }
