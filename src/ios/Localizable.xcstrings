@@ -228008,6 +228008,22 @@
         }
       }
     },
+    "Tap + to pick a folder from Files — an app folder in iCloud Drive, or On My iPhone → Minis.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点 + 从「文件」里选一个文件夹 —— iCloud 云盘里的 App 文件夹，或「我的 iPhone → Minis」。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "點 + 從「檔案」裡選一個資料夾 —— iCloud 雲盤裡的 App 資料夾，或「我的 iPhone → Minis」。"
+          }
+        }
+      }
+    },
     "Tap a destination to browse its folders and pick a backup.": {
       "extractionState": "manual",
       "localizations": {
