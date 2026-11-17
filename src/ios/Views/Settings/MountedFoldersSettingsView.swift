@@ -20,7 +20,14 @@ private let mountUILogger = AppLogger(category: "MountedFoldersUI")
 /// "Source path" section renders empty until the next attempt.
 private struct PendingMount: Identifiable {
     let id = UUID()
+    /// The folder that will be mounted.
     let url: URL
+    /// [T-mount-file-anchor] When the user picks a *file* inside the folder
+    /// they want, the folder is that file's parent. The security scope the
+    /// picker granted belongs to the file, not the parent, so this anchor has
+    /// to stay scoped while `bookmarkData()` runs on the parent — otherwise the
+    /// add fails with a bookmark error and the tap looks like it did nothing.
+    let scopeAnchor: URL?
     var name: String
     var allowWrite: Bool
 }
@@ -42,20 +49,15 @@ private enum MountFlow: String, Identifiable {
     var id: String { rawValue }
 }
 
-/// One alert slot for the screen: the picker hint and the add-failure message
-/// cannot be two `.alert` modifiers on the same view for the same reason two
-/// `.sheet` modifiers could not coexist — SwiftUI keeps one presentation per
-/// kind and silently drops the loser.
-private enum MountAlert: Identifiable, Equatable {
-    case pickerHint
-    case failure(String)
-
-    var id: String {
-        switch self {
-        case .pickerHint: return "pickerHint"
-        case .failure: return "failure"
-        }
-    }
+/// One alert slot for the screen.
+///
+/// [T-mount-picker-hint] Two `.alert` modifiers on the same view is the same
+/// trap as the two `.sheet` modifiers that caused the original bug: SwiftUI
+/// keeps one presentation per kind and silently drops the loser. The screen now
+/// has exactly one thing to say (a failure), so one optional string is enough.
+private struct MountAlert: Identifiable, Equatable {
+    let id = UUID()
+    let message: String
 }
 
 struct MountedFoldersSettingsView: View {
@@ -78,15 +80,6 @@ struct MountedFoldersSettingsView: View {
     /// never appears. Driving both the error and the first-tap hint through one
     /// enum-backed alert is the only shape that cannot silently drop one.
     @State private var alert: MountAlert?
-    /// First-tap explanation, shown before the picker ever appears.
-    ///
-    /// [T-mount-picker-hint] The picker opens inside Minis' own iCloud
-    /// container, which normally holds files but no subfolders — so every row
-    /// is greyed out and 打开 does nothing at all. That reads as "the button is
-    /// broken" and is exactly how this got reported. Saying where to navigate
-    /// *before* the picker opens is the only place the instruction is still
-    /// readable; a footnote under an empty list is not seen until afterwards.
-    @AppStorage("mount.pickerHintShown") private var pickerHintShown = false
 
     var body: some View {
         List {
@@ -106,13 +99,13 @@ struct MountedFoldersSettingsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
-                        // [T-mount-sheet-single] The picker opens inside the
-                        // Minis container, which usually holds only files and
-                        // has no subfolders — the Open button then does nothing
-                        // because there is nothing selectable. Tell the user
-                        // where to navigate instead of letting them conclude
-                        // the feature is broken.
-                        Text("In the picker, switch to Browse → On My iPhone or iCloud Drive, open the folder you want, then tap Open.")
+                        // [T-mount-file-anchor] The picker now accepts files as
+                        // well as folders, so picking a file mounts the folder
+                        // that contains it. Say that plainly — the old advice
+                        // ("open the folder, then tap Open") is impossible to
+                        // follow when the picker lands in a container that has
+                        // no subfolders, which is the reported case.
+                        Text("In the picker, open the folder you want and tap Open. If the list has no folders, just tap any file inside the folder you want — that folder is what gets mounted.")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                             .multilineTextAlignment(.center)
@@ -164,13 +157,12 @@ struct MountedFoldersSettingsView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    if pickerHintShown {
-                        stepShown = .picker
-                        flow = .picker
-                    } else {
-                        pickerHintShown = true
-                        alert = .pickerHint
-                    }
+                    // [T-mount-file-anchor] The first tap must open the picker.
+                    // It used to show an alert instead, so on a fresh install
+                    // the + button produced no picker at all — the same
+                    // "nothing happens" the report describes.
+                    stepShown = .picker
+                    flow = .picker
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -206,26 +198,50 @@ struct MountedFoldersSettingsView: View {
             case .picker:
                 FolderPicker(
                     onPick: { url in
-                        mountUILogger.info("[Mount] picker returned \(url.path) (isDirectory=\(Self.isDirectory(url)))")
-                        guard Self.isDirectory(url) else {
-                            // A `.folder` picker should never hand back a file,
-                            // but third-party providers have been seen doing it.
-                            // Say so instead of opening a form that will fail on
-                            // bookmarkData().
+                        let isDir = Self.isDirectory(url)
+                        mountUILogger.info("[Mount] picker returned \(url.path) (isDirectory=\(isDir))")
+                        // [T-mount-file-anchor] The picker now offers files as
+                        // well as folders. A file is not a mistake: the folder
+                        // the user wants is the one containing it, and picking
+                        // a file is the only thing they *can* do when the
+                        // picker opens in a container that holds no subfolders
+                        // (which is exactly the reported symptom — every row
+                        // greyed out, 打开 dead). Mount the parent and keep the
+                        // file's security scope alive as the anchor.
+                        let folderURL: URL
+                        let scopeAnchor: URL?
+                        if isDir {
+                            folderURL = url
+                            scopeAnchor = nil
+                        } else {
+                            folderURL = url.deletingLastPathComponent()
+                            scopeAnchor = url
+                        }
+                        guard folderURL.path != "/", !folderURL.path.isEmpty else {
                             pendingMount = nil
                             flow = nil
-                            // Present after the sheet has actually gone: an
-                            // alert raised in the same update as a sheet
-                            // dismissal loses the race the same way the second
-                            // sheet did.
                             DispatchQueue.main.async {
-                                alert = .failure(AppLocalized("The item you picked is a file, not a folder. Open the folder first, then tap Open."))
+                                alert = MountAlert(message: AppLocalized("That location cannot be mounted. Pick a folder inside On My iPhone or iCloud Drive."))
                             }
                             return
                         }
+                        // [T-mount-file-anchor] A file's security scope covers
+                        // that file, not its siblings, so the parent directory
+                        // may refuse even a metadata read. That is worth a log
+                        // line, but it must not block the mount: when the file
+                        // sits inside Minis' own container (the common case —
+                        // the picker opens there) the parent is fully readable
+                        // and bookmarkable without any scope at all. Blocking
+                        // here would turn "nothing selectable" into "selectable
+                        // but rejected", which is worse. `add` reports a real
+                        // bookmark failure with an actionable sentence.
+                        if !Self.isReadableDirectory(folderURL, anchor: scopeAnchor) {
+                            mountUILogger.warning("[Mount] parent may not be readable from the file's scope: \(folderURL.path)")
+                        }
                         pendingMount = PendingMount(
-                            url: url,
-                            name: Self.defaultMountName(for: url),
+                            url: folderURL,
+                            scopeAnchor: scopeAnchor,
+                            name: Self.defaultMountName(for: folderURL),
                             allowWrite: true
                         )
                         flow = nil
@@ -254,10 +270,11 @@ struct MountedFoldersSettingsView: View {
                         },
                         onConfirm: {
                             let current = pendingMount ?? pending
-                            mountUILogger.info("[Mount] confirm name=\(current.name) write=\(current.allowWrite) url=\(current.url.path)")
+                            mountUILogger.info("[Mount] confirm name=\(current.name) write=\(current.allowWrite) url=\(current.url.path) anchor=\(current.scopeAnchor?.path ?? "-")")
                             do {
                                 _ = try model.add(
                                     pickedURL: current.url,
+                                    scopeAnchor: current.scopeAnchor,
                                     customName: current.name,
                                     userAllowWrite: current.allowWrite
                                 )
@@ -267,7 +284,7 @@ struct MountedFoldersSettingsView: View {
                                 let message = error.localizedDescription
                                 pendingMount = nil
                                 flow = nil
-                                DispatchQueue.main.async { alert = .failure(message) }
+                                DispatchQueue.main.async { alert = MountAlert(message: message) }
                                 return
                             }
                             pendingMount = nil
@@ -284,43 +301,18 @@ struct MountedFoldersSettingsView: View {
             get: { alert != nil },
             set: { if !$0 { alert = nil } }
         )) {
-            if alert == .pickerHint {
-                Button(AppLocalized("Got it")) {
-                    // Same one-tick hop as everywhere else on this screen: the
-                    // alert is still on its way out, and presenting the picker
-                    // in the same update is dropped.
-                    DispatchQueue.main.async {
-                        stepShown = .picker
-                        flow = .picker
-                    }
-                }
-                Button(AppLocalized("Cancel"), role: .cancel) {}
-            } else {
-                Button(AppLocalized("OK"), role: .cancel) {}
-            }
+            Button(AppLocalized("OK"), role: .cancel) {}
         } message: {
             Text(alertMessage)
         }
     }
 
     private var alertTitle: String {
-        // Unwrap before switching: Swift does not match bare enum cases against
-        // an optional, and a `.none` arm here would only ever fire mid-dismissal.
-        guard let alert else { return AppLocalized("Error") }
-        switch alert {
-        case .pickerHint: return AppLocalized("Pick a folder, not a file")
-        case .failure: return AppLocalized("Error")
-        }
+        AppLocalized("Error")
     }
 
     private var alertMessage: String {
-        guard let alert else { return "" }
-        switch alert {
-        case .pickerHint:
-            return AppLocalized("The picker opens inside Minis' own folder, where there is usually nothing to select — the Open button then does nothing. Switch to Browse → On My iPhone or iCloud Drive first, open the folder you want, then tap Open.")
-        case .failure(let message):
-            return message
-        }
+        alert?.message ?? ""
     }
 
     /// Build the MountDetailView context for an external-mount entry.
@@ -361,6 +353,31 @@ struct MountedFoldersSettingsView: View {
         if url.hasDirectoryPath { return true }
         let values = try? url.resourceValues(forKeys: [.isDirectoryKey])
         return values?.isDirectory ?? false
+    }
+
+    /// Whether `url` is a directory we can actually mount.
+    ///
+    /// [T-mount-file-anchor] When the picker handed back a *file*, the mount
+    /// target becomes its parent directory, but the security scope the picker
+    /// granted belongs to the file. The parent may therefore refuse even a
+    /// metadata read, and without this check the user gets a mount entry that
+    /// silently reads as empty forever. Start the anchor's scope first, then
+    /// the target's, and stop both on the way out.
+    ///
+    /// Only `isDirectoryKey` is required. An empty folder is a legitimate
+    /// mount; "the provider evicted the contents" is a different condition and
+    /// is reported later by `MountActivationState.contentsUnavailable`.
+    private static func isReadableDirectory(_ url: URL, anchor: URL?) -> Bool {
+        let anchorStarted = anchor?.startAccessingSecurityScopedResource() ?? false
+        defer { if anchorStarted { anchor?.stopAccessingSecurityScopedResource() } }
+        let targetStarted = (url.path == anchor?.path)
+            ? false
+            : url.startAccessingSecurityScopedResource()
+        defer { if targetStarted { url.stopAccessingSecurityScopedResource() } }
+        guard let values = try? url.resourceValues(forKeys: [.isDirectoryKey]) else {
+            return false
+        }
+        return values.isDirectory == true
     }
 
     /// Trivial / meaningless segments often appearing at the end of an iCloud
@@ -577,13 +594,21 @@ private struct AddMountSheet: View {
 ///    in place. `asCopy: true` would copy the folder into our temp directory
 ///    and the bookmark would point at a copy that gets deleted, so mounts would
 ///    appear to work once and then read as empty.
+///
+/// [T-mount-file-anchor] The content types are `[.folder, .item]`, not
+/// `[.folder]`. With `.folder` alone the picker opens in Minis' own iCloud
+/// container — which holds files and no subfolders — so every row is greyed out
+/// and 打开 is dead. That is precisely the reported symptom, and it is not
+/// something the user can navigate out of when the container has no folders to
+/// descend into. Accepting files too means a tap on any file mounts the folder
+/// containing it, so the feature works from wherever the picker happens to land.
 private struct FolderPicker: UIViewControllerRepresentable {
     let onPick: (URL) -> Void
     var onCancel: () -> Void = {}
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         let picker = UIDocumentPickerViewController(
-            forOpeningContentTypes: [.folder],
+            forOpeningContentTypes: [.folder, .item],
             asCopy: false
         )
         picker.delegate = context.coordinator
@@ -653,13 +678,30 @@ final class MountedFoldersViewModel: ObservableObject {
     }
 
     @discardableResult
-    func add(pickedURL: URL, customName: String, userAllowWrite: Bool) throws -> MountedFolderEntry {
+    func add(
+        pickedURL: URL,
+        scopeAnchor: URL? = nil,
+        customName: String,
+        userAllowWrite: Bool
+    ) throws -> MountedFolderEntry {
         // The document picker gives a URL with scope active; start it once more
         // defensively so MountedFoldersManager's bookmarkData call inside succeeds.
-        let started = pickedURL.startAccessingSecurityScopedResource()
-        defer { if started { pickedURL.stopAccessingSecurityScopedResource() } }
+        // [T-mount-file-anchor] When the pick was a file and we mount its parent,
+        // the granted scope is the file's — start that one too, or the bookmark
+        // call on the parent fails and the tap looks like it did nothing.
+        let anchor = scopeAnchor ?? pickedURL
+        let startedAnchor = anchor.startAccessingSecurityScopedResource()
+        var startedTarget = false
+        if pickedURL.path != anchor.path {
+            startedTarget = pickedURL.startAccessingSecurityScopedResource()
+        }
+        defer {
+            if startedTarget { pickedURL.stopAccessingSecurityScopedResource() }
+            if startedAnchor { anchor.stopAccessingSecurityScopedResource() }
+        }
         let entry = try MountedFoldersManager.shared.add(
             pickedURL: pickedURL,
+            scopeAnchor: scopeAnchor,
             customName: customName,
             userAllowWrite: userAllowWrite
         )
