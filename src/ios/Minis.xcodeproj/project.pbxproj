@@ -437,7 +437,6 @@
 		E5SHV0004 /* MountDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5SHV0104 /* MountDetailView.swift */; };
 		E5SOUL001 /* SoulStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5SOUL101 /* SoulStore.swift */; };
 		E5SOUL002 /* SoulSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5SOUL102 /* SoulSettingsView.swift */; };
-		E5LFV0002 /* LocalFolderBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5LFV0102 /* LocalFolderBrowserView.swift */; };
 		E5MLV0002 /* MountLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5MLV0102 /* MountLogView.swift */; };
 		E5SPDT0001 /* SpeedTier.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5SPDT0011 /* SpeedTier.swift */; };
 		E5SPT0001 /* ScheduledPresetToolCall.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5SPT0011 /* ScheduledPresetToolCall.swift */; };
@@ -1262,7 +1261,6 @@
 		E5SHV0104 /* MountDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MountDetailView.swift; sourceTree = "<group>"; };
 		E5SOUL101 /* SoulStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoulStore.swift; sourceTree = "<group>"; };
 		E5SOUL102 /* SoulSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoulSettingsView.swift; sourceTree = "<group>"; };
-		E5LFV0102 /* LocalFolderBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalFolderBrowserView.swift; sourceTree = "<group>"; };
 		E5MLV0102 /* MountLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MountLogView.swift; sourceTree = "<group>"; };
 		E5SPDT0011 /* SpeedTier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeedTier.swift; sourceTree = "<group>"; };
 		E5SPT0011 /* ScheduledPresetToolCall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduledPresetToolCall.swift; sourceTree = "<group>"; };
@@ -2621,7 +2619,6 @@
 				E5MNT0101 /* MountedFoldersManager.swift */,
 				E5MNT0102 /* MountedFolderCoordinator.swift */,
 				E5MNT0103 /* MountedFoldersSettingsView.swift */,
-				E5LFV0102 /* LocalFolderBrowserView.swift */,
 				E5MLV0102 /* MountLogView.swift */,
 				E5SHV0101 /* SharedFolderVisibility.swift */,
 				E5SHV0103 /* SharedFoldersSettingsView.swift */,
@@ -3500,7 +3497,6 @@
 				E5LOCK001 /* SessionLockStore.swift in Sources */,
 				E5SOUL001 /* SoulStore.swift in Sources */,
 				E5SOUL002 /* SoulSettingsView.swift in Sources */,
-				E5LFV0002 /* LocalFolderBrowserView.swift in Sources */,
 				E5MLV0002 /* MountLogView.swift in Sources */,
 				E5CVSET0000000000000A001 /* SettingsSheet.swift in Sources */,
 				E5CVSET0000000000000A002 /* AppearanceSettingsView.swift in Sources */,
