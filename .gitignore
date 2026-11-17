@@ -210,3 +210,11 @@ dl3/
 dl4/
 .rel.json
 diag_frame.js
+
+# Local-folder mount + mount log work.
+add_zh_localfolder.js
+check_mount_keys.js
+fix_zh_apostrophe.js
+.commitmsg.txt
+dl5/
+loc.bak.json

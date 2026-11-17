@@ -28,6 +28,10 @@ private struct PendingMount: Identifiable {
     /// to stay scoped while `bookmarkData()` runs on the parent — otherwise the
     /// add fails with a bookmark error and the tap looks like it did nothing.
     let scopeAnchor: URL?
+    /// [T-mount-local-container] True when the folder came from the in-app
+    /// browser rather than the document picker. Such a folder needs no security
+    /// scope and no bookmark — see `MountedFoldersManager.add`.
+    var isLocalContainer: Bool = false
     var name: String
     var allowWrite: Bool
 }
@@ -44,6 +48,7 @@ private struct PendingMount: Identifiable {
 /// is presented (iOS refuses to stack two sheets).
 private enum MountFlow: String, Identifiable {
     case picker
+    case localBrowser
     case confirm
 
     var id: String { rawValue }
@@ -151,18 +156,53 @@ struct MountedFoldersSettingsView: View {
                     }
                 }
             }
+
+            // [T-mount-log] Every mount failure mode looks identical in the UI
+            // ("nothing happened"), so the log has to be reachable from the
+            // screen that reports it. Opening this row turns capture on, which
+            // is otherwise off by default — that is why earlier reports
+            // arrived with no usable log at all.
+            Section {
+                NavigationLink {
+                    MountLogView()
+                } label: {
+                    Label {
+                        Text(AppLocalized("Mount Log"))
+                    } icon: {
+                        Image(systemName: "text.alignleft")
+                            .foregroundStyle(.white)
+                            .frame(width: 21, height: 21)
+                            .background(.gray, in: RoundedRectangle(cornerRadius: 5))
+                    }
+                }
+            } footer: {
+                Text(AppLocalized("Shows what happened during a mount attempt: which picker callback fired, whether the bookmark was saved, whether the folder could be opened. Share it when reporting a problem."))
+                    .font(.caption2)
+            }
         }
         .navigationTitle("Mount External Folders")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    // [T-mount-file-anchor] The first tap must open the picker.
-                    // It used to show an alert instead, so on a fresh install
-                    // the + button produced no picker at all — the same
-                    // "nothing happens" the report describes.
-                    stepShown = .picker
-                    flow = .picker
+                // [T-mount-local-container] Two sources, one button. The
+                // document picker can only reach FileProvider domains, so
+                // folders inside Minis' own container (workspace, rootfs, App
+                // Group) had no route in at all — the picker showed an empty,
+                // fully greyed list and 打开 was dead. The in-app browser
+                // reaches them without any security scope.
+                Menu {
+                    Button {
+                        stepShown = .picker
+                        flow = .picker
+                    } label: {
+                        Label(AppLocalized("Pick from Files"), systemImage: "folder.badge.plus")
+                    }
+                    Button {
+                        stepShown = .localBrowser
+                        flow = .localBrowser
+                    } label: {
+                        Label(AppLocalized("Browse local folders"), systemImage: "internaldrive")
+                    }
                 } label: {
                     Image(systemName: "plus")
                 }
@@ -177,7 +217,7 @@ struct MountedFoldersSettingsView: View {
             // both steps; this hook is what advances picker → form, and it only
             // runs once the picker has actually left the hierarchy (iOS refuses
             // to stack two sheets).
-            if stepShown == .picker, let picked = pendingMount {
+            if stepShown != .confirm, let picked = pendingMount {
                 mountUILogger.info("[Mount] advancing to confirm step for \(picked.url.path)")
                 // Hopping one tick is deliberate: `onDismiss` runs while the
                 // picker's dismissal animation is still settling, and setting a
@@ -252,6 +292,25 @@ struct MountedFoldersSettingsView: View {
                         flow = nil
                     }
                 )
+            case .localBrowser:
+                LocalFolderBrowserView(
+                    onPick: { url in
+                        mountUILogger.info("[Mount] local browser picked \(url.path)")
+                        pendingMount = PendingMount(
+                            url: url,
+                            scopeAnchor: nil,
+                            isLocalContainer: true,
+                            name: Self.defaultMountName(for: url),
+                            allowWrite: true
+                        )
+                        flow = nil
+                    },
+                    onCancel: {
+                        mountUILogger.info("[Mount] local browser cancelled")
+                        pendingMount = nil
+                        flow = nil
+                    }
+                )
             case .confirm:
                 if let pending = pendingMount {
                     AddMountSheet(
@@ -276,7 +335,8 @@ struct MountedFoldersSettingsView: View {
                                     pickedURL: current.url,
                                     scopeAnchor: current.scopeAnchor,
                                     customName: current.name,
-                                    userAllowWrite: current.allowWrite
+                                    userAllowWrite: current.allowWrite,
+                                    isLocalContainer: current.isLocalContainer
                                 )
                                 mountUILogger.info("[Mount] added \(current.name), total=\(model.entries.count)")
                             } catch {
@@ -682,28 +742,43 @@ final class MountedFoldersViewModel: ObservableObject {
         pickedURL: URL,
         scopeAnchor: URL? = nil,
         customName: String,
-        userAllowWrite: Bool
+        userAllowWrite: Bool,
+        isLocalContainer: Bool = false
     ) throws -> MountedFolderEntry {
         // The document picker gives a URL with scope active; start it once more
         // defensively so MountedFoldersManager's bookmarkData call inside succeeds.
         // [T-mount-file-anchor] When the pick was a file and we mount its parent,
         // the granted scope is the file's — start that one too, or the bookmark
         // call on the parent fails and the tap looks like it did nothing.
-        let anchor = scopeAnchor ?? pickedURL
-        let startedAnchor = anchor.startAccessingSecurityScopedResource()
-        var startedTarget = false
-        if pickedURL.path != anchor.path {
-            startedTarget = pickedURL.startAccessingSecurityScopedResource()
-        }
-        defer {
-            if startedTarget { pickedURL.stopAccessingSecurityScopedResource() }
-            if startedAnchor { anchor.stopAccessingSecurityScopedResource() }
+        // [T-mount-local-container] A local-container pick needs none of this:
+        // we own the path, so a false return from startAccessing… is normal.
+        if !isLocalContainer {
+            let anchor = scopeAnchor ?? pickedURL
+            let startedAnchor = anchor.startAccessingSecurityScopedResource()
+            var startedTarget = false
+            if pickedURL.path != anchor.path {
+                startedTarget = pickedURL.startAccessingSecurityScopedResource()
+            }
+            defer {
+                if startedTarget { pickedURL.stopAccessingSecurityScopedResource() }
+                if startedAnchor { anchor.stopAccessingSecurityScopedResource() }
+            }
+            let entry = try MountedFoldersManager.shared.add(
+                pickedURL: pickedURL,
+                scopeAnchor: scopeAnchor,
+                customName: customName,
+                userAllowWrite: userAllowWrite,
+                isLocalContainer: false
+            )
+            refresh()
+            return entry
         }
         let entry = try MountedFoldersManager.shared.add(
             pickedURL: pickedURL,
             scopeAnchor: scopeAnchor,
             customName: customName,
-            userAllowWrite: userAllowWrite
+            userAllowWrite: userAllowWrite,
+            isLocalContainer: true
         )
         refresh()
         return entry

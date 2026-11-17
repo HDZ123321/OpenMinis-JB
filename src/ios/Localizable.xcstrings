@@ -23704,6 +23704,22 @@
         }
       }
     },
+    "Add Local Folder": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加本地文件夹"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增本機資料夾"
+          }
+        }
+      }
+    },
     "Add Model Manually": {
       "extractionState": "manual",
       "localizations": {
@@ -30447,6 +30463,22 @@
         }
       }
     },
+    "Alpine rootfs": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alpine 根文件系统"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alpine 根檔案系統"
+          }
+        }
+      }
+    },
     "Already up to date": {
       "localizations": {
         "de": {
@@ -33153,6 +33185,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "應用基礎"
+          }
+        }
+      }
+    },
+    "App Documents": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App 文稿"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App 文件"
           }
         }
       }
@@ -43811,6 +43859,22 @@
         }
       }
     },
+    "Browse local folders": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "浏览本地文件夹"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "瀏覽本機資料夾"
+          }
+        }
+      }
+    },
     "Browse the web in the in-app browser: open pages, read them, click and type. Stable and on by default. When off, the tool is removed from every conversation — the model does not see it at all.": {
       "extractionState": "manual",
       "localizations": {
@@ -47725,6 +47789,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "功能特性"
+          }
+        }
+      }
+    },
+    "Capture is now on. Go back, try adding a folder again, then return here — every step of the attempt is recorded.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日志记录已打开。返回上一页再挂载一次文件夹，然后回到这里 —— 这次尝试的每一步都会记下来。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日誌記錄已開啟。返回上一頁再掛載一次資料夾，然後回到這裡 —— 這次嘗試的每一步都會記下來。"
           }
         }
       }
@@ -100739,6 +100819,22 @@
         }
       }
     },
+    "Files this app writes outside the sandbox-visible areas.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个 App 写在沙盒可见区域之外的文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這個 App 寫在沙盒可見區域之外的檔案。"
+          }
+        }
+      }
+    },
     "Files, images, and documents you attach or share": {
       "extractionState": "stale",
       "localizations": {
@@ -127595,6 +127691,22 @@
         }
       }
     },
+    "Locations": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "位置"
+          }
+        }
+      }
+    },
     "Lock App": {
       "localizations": {
         "de": {
@@ -136027,6 +136139,22 @@
         }
       }
     },
+    "Minis config": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minis 配置"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minis 設定"
+          }
+        }
+      }
+    },
     "Minis connects to GitHub Copilot using an unofficial method that GitHub does not support. Using it may cause your GitHub Copilot account to be limited or suspended. Continue at your own risk.": {
       "extractionState": "manual",
       "localizations": {
@@ -136098,6 +136226,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Minis 無法把變量存入鑰匙圈。請解鎖裝置後重試。"
+          }
+        }
+      }
+    },
+    "Minis data": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minis 数据"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minis 資料"
           }
         }
       }
@@ -140576,6 +140720,22 @@
         }
       }
     },
+    "Mount Log": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "挂载日志"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "掛載日誌"
+          }
+        }
+      }
+    },
     "Mount external folders": {
       "localizations": {
         "de": {
@@ -141358,6 +141518,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "已掛載資料夾"
+          }
+        }
+      }
+    },
+    "Mounting a folder that is already inside Minis is fine — it is just a second path to the same files, which is handy when a session's workspace should be readable at a stable location.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "挂载一个本来就在 Minis 里的文件夹也可以 —— 它只是同一批文件的第二个路径，方便让会话的工作目录在一个固定位置可读。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "掛載一個本來就在 Minis 裡的資料夾也可以 —— 它只是同一批檔案的第二個路徑，方便讓會期的工作目錄在一個固定位置可讀。"
           }
         }
       }
@@ -148486,6 +148662,22 @@
         }
       }
     },
+    "No browsable folder was found in this app's container.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在这个 App 的容器里没有找到可浏览的文件夹。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在這個 App 的容器裡沒有找到可瀏覽的資料夾。"
+          }
+        }
+      }
+    },
     "No categories enabled": {
       "extractionState": "manual",
       "localizations": {
@@ -151333,6 +151525,22 @@
         }
       }
     },
+    "No mount log lines yet": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "还没有挂载日志"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "還沒有掛載日誌"
+          }
+        }
+      }
+    },
     "No mounted folders": {
       "localizations": {
         "de": {
@@ -153030,6 +153238,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "未辨識到語音 — 請重試"
+          }
+        }
+      }
+    },
+    "No subfolders here.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这里没有子文件夹。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這裡沒有子資料夾。"
           }
         }
       }
@@ -167252,6 +167476,22 @@
         }
       }
     },
+    "Per-session workspace, attachments and offloads.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每个会话的工作目录、附件与卸载文件。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "每個會期的工作目錄、附件與卸載檔案。"
+          }
+        }
+      }
+    },
     "Permanently Delete": {
       "localizations": {
         "de": {
@@ -168855,6 +169095,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "選擇一個包含音訊模型的分組來驅動此方向。"
+          }
+        }
+      }
+    },
+    "Pick from Files": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "从「文件」中选择"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從「檔案」中選擇"
           }
         }
       }
@@ -179141,6 +179397,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "來自其他設備的只讀工作階段"
+          }
+        }
+      }
+    },
+    "Reading logs…": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在读取日志…"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在讀取日誌…"
           }
         }
       }
@@ -208168,6 +208440,22 @@
         }
       }
     },
+    "Share Log": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享日志"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享日誌"
+          }
+        }
+      }
+    },
     "Shared": {
       "extractionState": "stale",
       "localizations": {
@@ -208768,6 +209056,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "分享內容已過期，請重新分享。"
+          }
+        }
+      }
+    },
+    "Shared folder": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共享文件夹"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "共享資料夾"
           }
         }
       }
@@ -212398,6 +212702,22 @@
         }
       }
     },
+    "Shows what happened during a mount attempt: which picker callback fired, whether the bookmark was saved, whether the folder could be opened. Share it when reporting a problem.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "显示一次挂载尝试里发生了什么：哪个选择器回调触发了、书签有没有保存成功、文件夹能不能打开。报告问题时把它分享出来。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "顯示一次掛載嘗試裡發生了什麼：哪個選擇器回呼觸發了、書籤有沒有儲存成功、資料夾能不能開啟。回報問題時把它分享出來。"
+          }
+        }
+      }
+    },
     "Sign In": {
       "extractionState": "stale",
       "localizations": {
@@ -215390,6 +215710,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "技能、記憶與共享檔案"
+          }
+        }
+      }
+    },
+    "Skills, memory, MCP servers and mount metadata.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "技能、记忆、MCP 服务器与挂载元数据。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "技能、記憶、MCP 伺服器與掛載中繼資料。"
           }
         }
       }
@@ -223197,6 +223533,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "目前會話副模型"
+          }
+        }
+      }
+    },
+    "Subfolders": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "子文件夹"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "子資料夾"
           }
         }
       }
@@ -231660,6 +232012,22 @@
         }
       }
     },
+    "That folder no longer exists. Remove this mount, or pick it again.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个文件夹已经不在了。删掉这个挂载，或者重新选一次。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這個資料夾已經不在了。刪掉這個掛載，或者重新選一次。"
+          }
+        }
+      }
+    },
     "That image couldn't be read.": {
       "extractionState": "manual",
       "localizations": {
@@ -231786,6 +232154,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "這個位置無法掛載。請在「我的 iPhone」或「iCloud 雲盤」裡選一個資料夾。"
+          }
+        }
+      }
+    },
+    "That path is not a folder any more. Pick another one.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个路径已经不是文件夹了。换一个。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這個路徑已經不是資料夾了。換一個。"
           }
         }
       }
@@ -232035,6 +232419,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Linux 環境已被重設。請重新啟動應用程式以重新安裝後再使用終端機。"
+          }
+        }
+      }
+    },
+    "The Linux filesystem the shell runs in.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shell 运行所在的 Linux 文件系统。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "shell 執行所在的 Linux 檔案系統。"
           }
         }
       }
@@ -235153,6 +235553,22 @@
         }
       }
     },
+    "The same folder Browse Files shows as Minis → shared.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "就是「浏览文件」里 Minis → shared 显示的那个文件夹。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "就是「瀏覽檔案」裡 Minis → shared 顯示的那個資料夾。"
+          }
+        }
+      }
+    },
     "The selection is too long for one image, so it is shared as a PDF.": {
       "extractionState": "manual",
       "localizations": {
@@ -236884,6 +237300,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "這些檔案的內容不在備份中，備份只記錄它們曾經存在以及檔案大小。"
+          }
+        }
+      }
+    },
+    "These folders live inside Minis itself, so the document picker cannot show them. Pick a location, open the folder you want, then tap Mount This Folder.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这些文件夹在 Minis 自己内部，所以系统选择器看不到它们。先选一个位置，进入想要的文件夹，再点「挂载这个文件夹」。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這些資料夾在 Minis 自己內部，所以系統選擇器看不到它們。先選一個位置，進入想要的資料夾，再點「掛載這個資料夾」。"
           }
         }
       }

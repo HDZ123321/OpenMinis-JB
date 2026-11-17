@@ -50,6 +50,25 @@ struct MountedFolderEntry: Codable, Identifiable, Equatable {
     /// this field existed.
     var userAllowWrite: Bool = true
 
+    /// [T-mount-local-container] True when the mount points at a directory that
+    /// already lives inside Minis' own container (Documents, Library/MinisChat,
+    /// the App Group container, the Alpine rootfs).
+    ///
+    /// Such a folder needs no security scope: we own it. `startAccessingSecurityScopedResource()`
+    /// therefore returns `false` for it, and treating that as a denial — which
+    /// is correct for a document-picker URL — would mark the mount
+    /// `.permissionDenied` on every launch, drop it from the iSH snapshot and
+    /// leave `/var/minis/mounts/<name>` unbound. The flag lets activation skip
+    /// the scope gate for exactly these entries.
+    var isLocalContainer: Bool = false
+
+    /// [T-mount-local-container] Absolute host path for a mount that lives
+    /// inside Minis' own container. Bookmarks are not used for those: a
+    /// sandbox-internal path never goes stale, and resolving a bookmark still
+    /// costs an XPC round-trip on launch for no benefit. `nil` for entries
+    /// created from the document picker.
+    var localPath: String? = nil
+
     /// Effective writable flag — both must be true to allow writes.
     var effectiveWritable: Bool {
         isWritable && userAllowWrite
@@ -57,6 +76,7 @@ struct MountedFolderEntry: Codable, Identifiable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, sourceDisplayName, bookmark, createdAt, isWritable, userAllowWrite
+        case isLocalContainer, localPath
     }
 
     init(
@@ -66,7 +86,9 @@ struct MountedFolderEntry: Codable, Identifiable, Equatable {
         bookmark: Data,
         createdAt: Date,
         isWritable: Bool,
-        userAllowWrite: Bool
+        userAllowWrite: Bool,
+        isLocalContainer: Bool = false,
+        localPath: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -75,6 +97,8 @@ struct MountedFolderEntry: Codable, Identifiable, Equatable {
         self.createdAt = createdAt
         self.isWritable = isWritable
         self.userAllowWrite = userAllowWrite
+        self.isLocalContainer = isLocalContainer
+        self.localPath = localPath
     }
 
     init(from decoder: Decoder) throws {
@@ -87,6 +111,10 @@ struct MountedFolderEntry: Codable, Identifiable, Equatable {
         // New fields — default to true for entries saved before they existed.
         self.isWritable = try c.decodeIfPresent(Bool.self, forKey: .isWritable) ?? true
         self.userAllowWrite = try c.decodeIfPresent(Bool.self, forKey: .userAllowWrite) ?? true
+        // …and to false here: a pre-existing entry came from the document
+        // picker, so it does need its scope.
+        self.isLocalContainer = try c.decodeIfPresent(Bool.self, forKey: .isLocalContainer) ?? false
+        self.localPath = try c.decodeIfPresent(String.self, forKey: .localPath)
     }
 
     /// Returns true if `name` is a valid mount directory name (no /, not empty, not . or ..).
@@ -283,13 +311,45 @@ final class MountedFoldersManager {
         pickedURL: URL,
         scopeAnchor: URL? = nil,
         customName: String,
-        userAllowWrite: Bool
+        userAllowWrite: Bool,
+        isLocalContainer: Bool = false
     ) throws -> MountedFolderEntry {
         let name = customName.trimmingCharacters(in: .whitespaces)
         guard MountedFolderEntry.isValidMountName(name) else { throw AddError.invalidName }
         guard isNameAvailable(name) else { throw AddError.nameTaken }
         guard entries.count < Self.maxMountCount else {
             throw AddError.limitReached(Self.maxMountCount)
+        }
+
+        // [T-mount-local-container] A folder inside our own container needs no
+        // security scope at all — we own it, so `startAccessingSecurityScopedResource()`
+        // returns false and that is not a failure. Take the plain-path branch
+        // and skip the bookmark entirely: there is nothing to remember across
+        // launches, and a bookmark would only add an XPC resolve on boot.
+        if isLocalContainer {
+            guard Self.isDirectory(pickedURL) else {
+                throw AddError.bookmarkFailed(
+                    AppLocalized("That path is not a folder any more. Pick another one.")
+                )
+            }
+            let entry = MountedFolderEntry(
+                id: UUID(),
+                name: name,
+                sourceDisplayName: pickedURL.lastPathComponent,
+                bookmark: Data(),
+                createdAt: Date(),
+                isWritable: Self.probeWritable(at: pickedURL),
+                userAllowWrite: userAllowWrite,
+                isLocalContainer: true,
+                localPath: pickedURL.path
+            )
+            entries.append(entry)
+            save()
+            activate(entry: entry)
+            AIChatViewModel.refreshMountedFolderSymlinks()
+            pushExternalMountSnapshot()
+            mountLog.info("added local mount '\(entry.name)' -> \(pickedURL.path)")
+            return entry
         }
 
         // The picker gives us a URL with scope already active, but for safety
@@ -507,6 +567,14 @@ final class MountedFoldersManager {
                 for entry in snapshot {
                     // Skip anything a previous partial pass already activated.
                     if self.activeURLs[entry.id] != nil { continue }
+                    // [T-mount-local-container] Local-container mounts have no
+                    // bookmark to resolve; `resolveAndCommit` would fail on the
+                    // empty data and file them as `.failed`. Activate them here
+                    // — it is a synchronous path check, no XPC involved.
+                    if entry.isLocalContainer {
+                        self.activate(entry: entry)
+                        continue
+                    }
                     group.addTask { await Self.resolveAndCommit(entry: entry) }
                 }
                 await group.waitForAll()
@@ -921,6 +989,27 @@ final class MountedFoldersManager {
             return state
         }
 
+        // [T-mount-local-container] A sandbox-internal mount has no bookmark and
+        // needs no scope. Resolve the stored path directly and verify it still
+        // exists — a directory can disappear when the user deletes it, or when
+        // the Alpine rootfs is reset, and saying so beats a silent no-op.
+        if entry.isLocalContainer, let path = entry.localPath {
+            let url = URL(fileURLWithPath: path, isDirectory: true)
+            guard Self.isDirectory(url) else {
+                let state = MountActivationState.failed(
+                    AppLocalized("That folder no longer exists. Remove this mount, or pick it again.")
+                )
+                activationStates[entry.id] = state
+                mountLog.warning("activate local '\(entry.name)' missing at \(path)")
+                return state
+            }
+            activeURLs[entry.id] = url
+            activationStates[entry.id] = .active(resolvedURL: url)
+            cacheCanonicalPath(for: entry.id, url: url)
+            mountLog.info("activated local '\(entry.name)' -> \(path)")
+            return .active(resolvedURL: url)
+        }
+
         var stale = false
         let url: URL
         do {
@@ -1016,6 +1105,16 @@ final class MountedFoldersManager {
     }
 
     // MARK: - Symlink helpers
+
+    /// [T-mount-local-container] Whether `url` is a directory on disk.
+    ///
+    /// `resourceValues` follows symlinks, so this is only used for paths we
+    /// generated ourselves (the local browser's roots and its children).
+    nonisolated static func isDirectory(_ url: URL) -> Bool {
+        if url.hasDirectoryPath { return true }
+        let values = try? url.resourceValues(forKeys: [.isDirectoryKey])
+        return values?.isDirectory ?? false
+    }
 
     /// Build a user-friendly source display for a picked folder URL.
     ///
