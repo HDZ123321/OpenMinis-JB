@@ -188,6 +188,15 @@
 	<false/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<!-- [T-mount-sideload-picker] Expose Documents in the Files app so the
+	     folder picker always has somewhere to navigate to. Upstream relies on
+	     the iCloud Drive container for this, which an ad-hoc / Personal Team
+	     build does not get: the picker then opens on a folder that holds only
+	     files, every row is greyed out by the .folder filter, and "Open" does
+	     nothing. With file sharing on, On My iPhone -> Minis exists and the
+	     picker can be pointed at it. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>NFCReaderUsageDescription</key>
 	<string>Minis uses NFC so the AI agent can read and write NFC tags on your behalf.</string>
 	<key>NSAlarmKitUsageDescription</key>
