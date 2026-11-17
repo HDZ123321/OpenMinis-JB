@@ -269,11 +269,22 @@ final class MountedFoldersManager {
     /// The caller is responsible for presenting the picker; this takes the result URL.
     /// The URL must currently have an active security scope (as it does right after picker callback).
     ///
+    /// `scopeAnchor` is the URL the picker actually granted access to. It differs
+    /// from `pickedURL` when the user picked a *file* and we mount the folder
+    /// containing it: iOS scopes the file, not its parent, so the file has to
+    /// stay scoped while `bookmarkData()` runs on the parent — otherwise the
+    /// bookmark call fails and the tap looks like it did nothing.
+    ///
     /// `userAllowWrite` is the user's intent: pass `true` to allow AI and shell
     /// to modify the folder, or `false` to mount it as an internally-locked
     /// read-only folder (even if the source itself is writable).
     @discardableResult
-    func add(pickedURL: URL, customName: String, userAllowWrite: Bool) throws -> MountedFolderEntry {
+    func add(
+        pickedURL: URL,
+        scopeAnchor: URL? = nil,
+        customName: String,
+        userAllowWrite: Bool
+    ) throws -> MountedFolderEntry {
         let name = customName.trimmingCharacters(in: .whitespaces)
         guard MountedFolderEntry.isValidMountName(name) else { throw AddError.invalidName }
         guard isNameAvailable(name) else { throw AddError.nameTaken }
@@ -282,9 +293,21 @@ final class MountedFoldersManager {
         }
 
         // The picker gives us a URL with scope already active, but for safety
-        // re-start it; balanced stop in defer.
-        let startedHere = pickedURL.startAccessingSecurityScopedResource()
-        defer { if startedHere { pickedURL.stopAccessingSecurityScopedResource() } }
+        // re-start it; balanced stop in defer. When the pick was a file, the
+        // granted scope belongs to that file — start both, stop both.
+        let anchor = scopeAnchor ?? pickedURL
+        let startedAnchor = anchor.startAccessingSecurityScopedResource()
+        var startedTarget = false
+        if pickedURL.path != anchor.path {
+            startedTarget = pickedURL.startAccessingSecurityScopedResource()
+        }
+        defer {
+            if startedTarget { pickedURL.stopAccessingSecurityScopedResource() }
+            if startedAnchor { anchor.stopAccessingSecurityScopedResource() }
+        }
+        mountLog.info(
+            "scope start anchor=\(anchor.lastPathComponent) ok=\(startedAnchor) target=\(pickedURL.lastPathComponent) ok=\(startedTarget)"
+        )
 
         let bookmark: Data
         do {
@@ -295,7 +318,10 @@ final class MountedFoldersManager {
                 relativeTo: nil
             )
         } catch {
-            throw AddError.bookmarkFailed(error.localizedDescription)
+            throw AddError.bookmarkFailed(
+                AppLocalized("Could not save access to that folder. In the picker, open the folder itself and tap Open.")
+                    + " (\(error.localizedDescription))"
+            )
         }
 
         // Probe writability by creating + deleting a tiny hidden file.
