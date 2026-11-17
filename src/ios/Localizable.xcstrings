@@ -136358,6 +136358,22 @@
         }
       }
     },
+    "Minis has no Documents folder to mount.": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minis 没有可挂载的 Documents 目录。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minis 沒有可掛載的 Documents 目錄。"
+          }
+        }
+      }
+    },
     "Minis is Locked": {
       "localizations": {
         "de": {
@@ -141406,6 +141422,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "掛載名稱不能爲空，不能包含 '/'，也不能爲 '.' 或 '..'。"
+          }
+        }
+      }
+    },
+    "Mount the Inbox folder instead": {
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改为挂载 Inbox 文件夹"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "改為掛載 Inbox 資料夾"
           }
         }
       }
