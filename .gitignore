@@ -201,3 +201,12 @@ test_budget_ab.js
 budget_ab.log
 rewrite_ab1.log
 frame_ab1.log
+
+# Mount-picker work: helper scripts and downloaded artifacts.
+add_zh_mount.js
+add_zh_mount2.js
+check_settings_keys.js
+dl3/
+dl4/
+.rel.json
+diag_frame.js
