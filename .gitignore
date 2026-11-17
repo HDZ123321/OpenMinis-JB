@@ -218,3 +218,5 @@ fix_zh_apostrophe.js
 .commitmsg.txt
 dl5/
 loc.bak.json
+dl6/
+add_zh_mount_hint.js
