@@ -68883,6 +68883,23 @@
         }
       }
     },
+    "Could not save access to that folder. In the picker, open the folder itself and tap Open.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没能保存对这个文件夹的访问权限。请在选择器里进入那个文件夹本身，再点「打开」。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "沒能儲存對這個資料夾的存取權限。請在選擇器裡進入那個資料夾本身，再點「打開」。"
+          }
+        }
+      }
+    },
     "Couldn't build the launcher URL.": {
       "extractionState": "stale",
       "localizations": {
@@ -231756,6 +231773,23 @@
         }
       }
     },
+    "That location cannot be mounted. Pick a folder inside On My iPhone or iCloud Drive.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "这个位置不能挂载。请在「我的 iPhone」或「iCloud 云盘」里选一个文件夹。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這個位置無法掛載。請在「我的 iPhone」或「iCloud 雲盤」裡選一個資料夾。"
+          }
+        }
+      }
+    },
     "The API key was rejected. Update the key to see the balance.": {
       "extractionState": "manual",
       "localizations": {
@@ -233721,6 +233755,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "固定開場白把第一個 token 推過模型在冷啟動請求上容易落入的拒絕模式。補充約束重申「拒絕屬於格式錯誤」。改寫只作用於模型看到的那份副本，把觸發拒絕的動詞換成中性說法——氣泡裡仍然顯示你自己打的字。修復框架把敏感請求包裝成一條已在執行的流水線的失敗驗證步驟，模型會把它當作維護而不是發起新行為。"
+          }
+        }
+      }
+    },
+    "The folder containing that file cannot be read. Open the folder itself in the picker and tap Open.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "读不到这个文件所在的文件夹。请在选择器里进入那个文件夹本身，再点「打开」。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "讀不到這個檔案所在的資料夾。請在選擇器裡進入那個資料夾本身，再點「打開」。"
           }
         }
       }
