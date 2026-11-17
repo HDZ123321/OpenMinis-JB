@@ -55,6 +55,21 @@ struct MountedFoldersSettingsView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
+                        // [T-mount-sideload-picker] Escape hatch for the case the
+                        // picker still cannot hand anything back (a Files
+                        // provider that refuses to vend a folder URL, or a
+                        // build where "On My iPhone → Minis" is not exposed).
+                        // Mounting the Inbox needs no picker at all: the folder
+                        // lives inside our own sandbox, so it is reachable
+                        // directly and proves the whole bind-mount path works.
+                        Button {
+                            mountInbox()
+                        } label: {
+                            Label(AppLocalized("Mount the Inbox folder instead"), systemImage: "tray.and.arrow.down")
+                                .font(.footnote)
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(model.isAtCapacity)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 24)
@@ -198,6 +213,40 @@ struct MountedFoldersSettingsView: View {
             Button(AppLocalized("OK"), role: .cancel) { errorText = nil }
         } message: {
             Text(errorText ?? "")
+        }
+    }
+
+    /// Mount `Documents/Inbox` without going through the document picker.
+    ///
+    /// [T-mount-sideload-picker] The picker can fail for reasons entirely
+    /// outside this app: a Files provider that will not vend a folder URL, or
+    /// a signing tier where the app's own container is not exposed in Files.
+    /// Inbox is inside our sandbox, so it needs no security scope and no
+    /// picker — mounting it exercises the same bookmark → activate →
+    /// pushExternalMountSnapshot path a picked folder would, which makes it a
+    /// usable fallback and a way to tell "picker is broken" apart from
+    /// "bind mounting is broken".
+    private func mountInbox() {
+        guard let documents = FileManager.default.urls(
+            for: .documentDirectory,
+            in: .userDomainMask
+        ).first else {
+            errorText = AppLocalized("Minis has no Documents folder to mount.")
+            return
+        }
+        let inbox = documents.appendingPathComponent("Inbox", isDirectory: true)
+        try? FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+        mountUILogger.info("[Mount] mounting Inbox directly at \(inbox.path)")
+        do {
+            _ = try model.add(
+                pickedURL: inbox,
+                customName: "Inbox",
+                userAllowWrite: true
+            )
+            model.refresh()
+        } catch {
+            mountUILogger.warning("[Mount] direct Inbox mount failed: \(error.localizedDescription)")
+            errorText = error.localizedDescription
         }
     }
 
